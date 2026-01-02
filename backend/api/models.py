@@ -8,12 +8,12 @@ class Client(models.Model):
     postal_code = models.CharField(max_length=20, blank=True)
     phone = models.CharField(max_length=50, blank=True)
     email = models.EmailField(max_length=254, blank=True, null=True)
-    vat_number = models.CharField(max_length=50, blank=True)
+    vat_number = models.CharField(max_length=50, blank=True, null=True)
 
     def __str__(self):
         return self.name
 
-# 2. The Job (Includes new Transport Document Number)
+# 2. The Job (Includes new Transport Document Number AND VAT)
 class Job(models.Model):
     ROUTE_TYPES = [
         ('SEA', 'Sea'),
@@ -30,6 +30,9 @@ class Job(models.Model):
     # --- NEW FIELD: For AWB, BL, or CMR Number ---
     transport_document_no = models.CharField(max_length=100, blank=True, help_text="AWB, BL, or Consignment Note Number")
 
+    # --- ADDED THIS MISSING FIELD ---
+    vat_number = models.CharField(max_length=50, blank=True, null=True) 
+
     transport_mode = models.CharField(max_length=10, choices=ROUTE_TYPES, default='SEA')
     
     port_loading = models.CharField(max_length=100)
@@ -40,6 +43,7 @@ class Job(models.Model):
     no_of_packages = models.IntegerField(default=0)
     gross_weight = models.DecimalField(max_digits=12, decimal_places=3, default=0.000)
     net_weight = models.DecimalField(max_digits=12, decimal_places=3, default=0.000)
+    cbm = models.DecimalField(max_digits=12, decimal_places=3, default=0.000, null=True, blank=True) # Added CBM just in case it was missing
 
     is_finished = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -66,7 +70,7 @@ class Invoice(models.Model):
 
 class Transaction(models.Model):
     trans_type = models.CharField(max_length=10) # CR, CP, BR, BP
-    party_name = models.CharField(max_length=200, blank=True) # Added based on your code
+    party_name = models.CharField(max_length=200, blank=True) 
     amount = models.DecimalField(max_digits=10, decimal_places=3)
     description = models.CharField(max_length=255, blank=True)
     date = models.DateField()
@@ -131,5 +135,3 @@ class Receipt(models.Model):
     
     def __str__(self):
         return f"Receipt #{self.id} - {self.total_amount}"
-
-
