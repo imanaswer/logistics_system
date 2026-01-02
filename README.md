@@ -87,3 +87,15 @@ python manage.py migrate
 
 # Start the server
 python manage.py runserver
+
+
+
+
+# Navigate to frontend directory
+cd ../frontend
+
+# Install dependencies
+npm install
+
+# Start the development server
+npm run dev
