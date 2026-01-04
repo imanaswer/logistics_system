@@ -11,8 +11,7 @@ export default function Login() {
 
   // 1. Define the API URL at the top level
   // This automatically picks the Cloud URL on Vercel, or Localhost on your computer
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
+  const API_URL = 'https://logistics-backend-848b.onrender.com';
   const handleLogin = async (e: any) => {
     e.preventDefault();
     setLoading(true);
