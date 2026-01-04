@@ -1,22 +1,32 @@
-"""
-URL configuration for core project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/6.0/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
+from django.http import HttpResponse
+from django.contrib.auth import get_user_model
+
+# --- MAGIC FUNCTION TO CREATE BOTH USERS ---
+def create_users(request):
+    User = get_user_model()
+    response_text = "<h1>User Creation Status</h1>"
+
+    # 1. Create Admin
+    if not User.objects.filter(username='admin').exists():
+        User.objects.create_superuser('admin', 'admin@example.com', 'Newadmin')
+        response_text += "<p style='color:green'>✅ <b>Admin Created:</b> Login with 'admin' / 'Newadmin'</p>"
+    else:
+        response_text += "<p>⚠️ Admin already exists.</p>"
+
+    # 2. Create Employee
+    if not User.objects.filter(username='employee').exists():
+        User.objects.create_user('employee', 'employee@example.com', 'employee')
+        response_text += "<p style='color:green'>✅ <b>Employee Created:</b> Login with 'employee' / 'employee'</p>"
+    else:
+        response_text += "<p>⚠️ Employee already exists.</p>"
+
+    return HttpResponse(response_text)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/', include('api.urls')),
+    # Use this link to trigger the creation:
+    path('make-users/', create_users),
 ]
