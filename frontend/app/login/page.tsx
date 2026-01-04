@@ -1,6 +1,5 @@
 "use client";
 import { useState } from 'react';
-import axios from 'axios';
 import { useRouter } from 'next/navigation';
 
 export default function Login() {
@@ -10,24 +9,44 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // 1. Define the API URL at the top level
+  // This automatically picks the Cloud URL on Vercel, or Localhost on your computer
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
   const handleLogin = async (e: any) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      // 1. Authenticate with Backend
-      const res = await axios.post('http://127.0.0.1:8000/api/login/', { username, password });
+      console.log("Attempting login to:", `${API_URL}/api/login/`); // Debugging log
+
+      const res = await fetch(`${API_URL}/api/login/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+      });
+
+      // 2. CRITICAL FIX: Check if the server said "No" (400/401 error)
+      if (!res.ok) {
+        throw new Error('Login failed');
+      }
       
-      // 2. Save Credentials Securely
-      localStorage.setItem('token', res.data.token);
-      localStorage.setItem('username', username);
+      // 3. Save Credentials Securely
+      const data = await res.json();
       
-      // 3. HARD REDIRECT (Forces browser to reload and clear old state)
-      window.location.href = '/'; 
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('username', username);
+        
+        // 4. Hard Redirect to force the dashboard to load fresh
+        window.location.href = '/'; 
+      } else {
+        throw new Error('No token received');
+      }
 
     } catch (err) {
-      console.error(err);
+      console.error("Login Error:", err);
       setError('Invalid Username or Password');
       setLoading(false);
     }
