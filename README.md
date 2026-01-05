@@ -99,3 +99,6 @@ npm install
 
 # Start the development server
 npm run dev
+
+
+https://logistics-backend-848b.onrender.com/admin/api/chargetype/add/

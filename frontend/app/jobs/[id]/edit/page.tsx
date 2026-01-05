@@ -2,14 +2,12 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useRouter, useParams } from 'next/navigation';
-// 1. Import the global config
 import { API_URL } from '../../../config'; 
 
 export default function EditJobCustomer() {
   const router = useRouter();
   const params = useParams();
   
-  // FIX: Check for both possible parameter names to prevent undefined errors
   const jobId = params.jobId || params.id; 
 
   // --- FORM STATE ---
@@ -23,7 +21,9 @@ export default function EditJobCustomer() {
     job_date: '',
     port_loading: '',
     port_discharge: '',
-    shipment_invoice_no: '',
+    // We will separate the single backend field into two for the UI
+    reference_number: '', 
+    truck_details: '',
     no_of_packages: '0',
     gross_weight: '0',
     net_weight: '0',
@@ -34,9 +34,13 @@ export default function EditJobCustomer() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  // --- 1. FETCH EXISTING DATA ---
+  const truckOptions = [
+      '1x20 ft dry', '1x40 ft dry', '1x20 ft reefer', '1x40 ft reefer', 
+      '3 ton reefer', '3 ton normal', '10 ton reefer', '10 ton normal'
+  ];
+
+  // --- 1. FETCH & PARSE DATA ---
   useEffect(() => {
-    // Safety check: If no ID is found, stop loading and show error
     if (!jobId) {
         setLoading(false);
         setError("Invalid URL: Job ID missing.");
@@ -48,16 +52,31 @@ export default function EditJobCustomer() {
       if (!token) { window.location.href = '/login'; return; }
       
       try {
-        console.log("Fetching data for Job ID:", jobId); 
-        
-        // 👇 CHANGED: Use API_URL here
         const res = await axios.get(`${API_URL}/api/jobs/${jobId}/?t=${Date.now()}`, {
             headers: { Authorization: `Token ${token}` }
         });
-        
         const data = res.data;
+        
+        // --- PARSE THE COMBINED FIELD ---
+        let refPart = '';
+        let truckPart = '';
+        const fullStr = data.shipment_invoice_no || '';
 
-        // Populate state
+        // If format is "REF-123 (1x 20ft...)"
+        if (fullStr.includes('(') && fullStr.includes(')')) {
+            const parts = fullStr.split('(');
+            refPart = parts[0].trim();
+            truckPart = parts[1].replace(')', '').trim();
+        } 
+        // If it looks like just trucks
+        else if (fullStr.toLowerCase().includes('ft') || fullStr.toLowerCase().includes('ton') || fullStr.toLowerCase().includes('x')) {
+            truckPart = fullStr;
+        } 
+        // If it looks like just a ref
+        else {
+            refPart = fullStr;
+        }
+
         setFormData({
           client_name: data.client_details?.name || data.client?.name || '',
           client_phone: data.client_details?.phone || data.client?.phone || '',
@@ -68,7 +87,11 @@ export default function EditJobCustomer() {
           job_date: data.job_date || '',
           port_loading: data.port_loading || '',
           port_discharge: data.port_discharge || '',
-          shipment_invoice_no: data.shipment_invoice_no || '',
+          
+          // Set separated fields
+          reference_number: refPart,
+          truck_details: truckPart,
+
           no_of_packages: data.no_of_packages?.toString() || '0',
           gross_weight: data.gross_weight?.toString() || '0',
           net_weight: data.net_weight?.toString() || '0',
@@ -77,19 +100,34 @@ export default function EditJobCustomer() {
         setLoading(false);
       } catch (error: any) {
         console.error("Error fetching job:", error);
-        setError("Failed to load job details. Check console.");
+        setError("Failed to load job details.");
         setLoading(false);
       }
     };
-    
     fetchData();
   }, [jobId]);
 
-  // --- 2. HANDLE SAVE ---
+  // --- HELPER: ADD TRUCK ---
+  const addTruck = (truck: string) => {
+      const current = formData.truck_details ? formData.truck_details + ', ' : '';
+      setFormData({ ...formData, truck_details: current + "1x " + truck });
+  };
+
+  // --- 2. HANDLE SAVE (COMBINE FIELDS) ---
   const handleSave = async (e: any) => {
     e.preventDefault();
     setSaving(true);
     const token = localStorage.getItem('token');
+
+    // Combine Ref + Trucks into the format "REF (TRUCKS)" for backend
+    let finalInvoiceString = '';
+    if (formData.reference_number && formData.truck_details) {
+        finalInvoiceString = `${formData.reference_number} (${formData.truck_details})`;
+    } else if (formData.truck_details) {
+        finalInvoiceString = formData.truck_details; // Just trucks
+    } else {
+        finalInvoiceString = formData.reference_number; // Just ref
+    }
 
     const payload = {
       vat_number: formData.vat_number, 
@@ -104,7 +142,10 @@ export default function EditJobCustomer() {
       job_date: formData.job_date,
       port_loading: formData.port_loading,
       port_discharge: formData.port_discharge,
-      shipment_invoice_no: formData.shipment_invoice_no,
+      
+      // Send the combined string to backend
+      shipment_invoice_no: finalInvoiceString,
+
       no_of_packages: parseFloat(formData.no_of_packages) || 0,
       gross_weight: parseFloat(formData.gross_weight) || 0,
       net_weight: parseFloat(formData.net_weight) || 0,
@@ -112,7 +153,6 @@ export default function EditJobCustomer() {
     };
 
     try {
-      // 👇 CHANGED: Use API_URL here
       await axios.put(`${API_URL}/api/jobs/${jobId}/`, payload, {
         headers: { Authorization: `Token ${token}` }
       });
@@ -125,17 +165,9 @@ export default function EditJobCustomer() {
     }
   };
 
-  // --- RENDER STATES ---
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-500 font-bold uppercase tracking-widest">Loading Editor...</div>;
-  
-  if (error) return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <div className="text-red-500 font-bold uppercase tracking-widest">{error}</div>
-        <button onClick={() => router.back()} className="bg-slate-900 text-white px-6 py-2 rounded-lg">Go Back</button>
-    </div>
-  );
+  if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-500 font-bold uppercase tracking-widest">Loading...</div>;
+  if (error) return <div className="min-h-screen flex items-center justify-center text-red-500 font-bold">{error}</div>;
 
-  // --- FORM UI ---
   const sectionClass = "bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6";
   const labelClass = "block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5";
   const inputClass = "w-full p-3 rounded-lg border border-slate-200 font-bold text-slate-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition";
@@ -144,7 +176,6 @@ export default function EditJobCustomer() {
     <div className="min-h-screen bg-slate-50 p-6 flex justify-center font-sans">
       <div className="w-full max-w-4xl space-y-6">
         
-        {/* Header */}
         <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <div>
                 <h1 className="text-2xl font-black text-slate-900 tracking-tight">Edit Job Details</h1>
@@ -158,42 +189,20 @@ export default function EditJobCustomer() {
             {/* Customer Details */}
             <div className={sectionClass}>
                 <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-                    <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                    </div>
                     <h3 className="text-lg font-bold text-slate-900">Customer Information</h3>
                 </div>
-                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label className={labelClass}>Customer Name</label>
-                        <input type="text" value={formData.client_name} onChange={e => setFormData({...formData, client_name: e.target.value})} className={inputClass} />
-                    </div>
-                    <div>
-                        <label className={labelClass}>VAT Number</label>
-                        <input type="text" value={formData.vat_number} onChange={e => setFormData({...formData, vat_number: e.target.value})} className={inputClass} placeholder="TRN / VAT NO" />
-                    </div>
-                    <div>
-                        <label className={labelClass}>Phone</label>
-                        <input type="text" value={formData.client_phone} onChange={e => setFormData({...formData, client_phone: e.target.value})} className={inputClass} />
-                    </div>
-                    <div>
-                        <label className={labelClass}>Email</label>
-                        <input type="email" value={formData.client_email} onChange={e => setFormData({...formData, client_email: e.target.value})} className={inputClass} />
-                    </div>
-                    <div className="md:col-span-2">
-                        <label className={labelClass}>Full Address</label>
-                        <textarea value={formData.client_address} onChange={e => setFormData({...formData, client_address: e.target.value})} className={inputClass} rows={2} />
-                    </div>
+                    <div><label className={labelClass}>Customer Name</label><input type="text" value={formData.client_name} onChange={e => setFormData({...formData, client_name: e.target.value})} className={inputClass} /></div>
+                    <div><label className={labelClass}>VAT Number</label><input type="text" value={formData.vat_number} onChange={e => setFormData({...formData, vat_number: e.target.value})} className={inputClass} /></div>
+                    <div><label className={labelClass}>Phone</label><input type="text" value={formData.client_phone} onChange={e => setFormData({...formData, client_phone: e.target.value})} className={inputClass} /></div>
+                    <div><label className={labelClass}>Email</label><input type="email" value={formData.client_email} onChange={e => setFormData({...formData, client_email: e.target.value})} className={inputClass} /></div>
+                    <div className="md:col-span-2"><label className={labelClass}>Address</label><textarea value={formData.client_address} onChange={e => setFormData({...formData, client_address: e.target.value})} className={inputClass} rows={2} /></div>
                 </div>
             </div>
 
             {/* Shipment Details */}
             <div className={sectionClass}>
                 <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-                    <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
-                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"></path></svg>
-                    </div>
                     <h3 className="text-lg font-bold text-slate-900">Shipment Details</h3>
                 </div>
 
@@ -206,50 +215,43 @@ export default function EditJobCustomer() {
                             <option value="LAND">Land Freight</option>
                         </select>
                     </div>
-                    <div>
-                        <label className={labelClass}>Job Date</label>
-                        <input type="date" value={formData.job_date} onChange={e => setFormData({...formData, job_date: e.target.value})} className={inputClass} />
+                    <div><label className={labelClass}>Job Date</label><input type="date" value={formData.job_date} onChange={e => setFormData({...formData, job_date: e.target.value})} className={inputClass} /></div>
+
+                    {/* --- TRUCK SELECTION --- */}
+                    <div className="md:col-span-2 bg-blue-50 p-5 rounded-xl border border-blue-100">
+                        <label className={labelClass}>Add Container / Vehicle</label>
+                        <div className="flex flex-wrap gap-2 mb-3">
+                            {truckOptions.map(t => (
+                                <button key={t} type="button" onClick={() => addTruck(t)} className="bg-white border border-blue-200 text-blue-800 px-3 py-2 text-[10px] font-bold uppercase rounded-lg hover:bg-blue-600 hover:text-white transition shadow-sm">+ {t}</button>
+                            ))}
+                        </div>
+                        
+                        {/* TRUCK LIST INPUT */}
+                        <label className={labelClass}>Selected Containers / Vehicles</label>
+                        <input type="text" value={formData.truck_details} onChange={e => setFormData({...formData, truck_details: e.target.value})} className="w-full p-3 rounded-lg border border-blue-200 font-bold text-blue-900 bg-white focus:outline-none" placeholder="No vehicles selected..." />
                     </div>
-                    <div>
-                        <label className={labelClass}>Port of Loading</label>
-                        <input type="text" value={formData.port_loading} onChange={e => setFormData({...formData, port_loading: e.target.value})} className={inputClass} />
-                    </div>
-                    <div>
-                        <label className={labelClass}>Port of Discharge</label>
-                        <input type="text" value={formData.port_discharge} onChange={e => setFormData({...formData, port_discharge: e.target.value})} className={inputClass} />
-                    </div>
+
+                    <div><label className={labelClass}>Origin</label><input type="text" value={formData.port_loading} onChange={e => setFormData({...formData, port_loading: e.target.value})} className={inputClass} /></div>
+                    <div><label className={labelClass}>Destination</label><input type="text" value={formData.port_discharge} onChange={e => setFormData({...formData, port_discharge: e.target.value})} className={inputClass} /></div>
+                    
+                    {/* REFERENCE NUMBER INPUT */}
                     <div className="md:col-span-2">
-                        <label className={labelClass}>Reference No</label>
-                        <input type="text" value={formData.shipment_invoice_no} onChange={e => setFormData({...formData, shipment_invoice_no: e.target.value})} className={inputClass} />
+                        <label className={labelClass}>Client Reference / PO Number</label>
+                        <input type="text" value={formData.reference_number} onChange={e => setFormData({...formData, reference_number: e.target.value})} className={inputClass} placeholder="e.g. PO-2026-001" />
                     </div>
                 </div>
 
-                {/* Cargo Stats */}
+                {/* Stats */}
                 <div className="pt-4 border-t border-slate-100 grid grid-cols-2 md:grid-cols-4 gap-6">
-                    <div>
-                        <label className={labelClass}>Packages</label>
-                        <input type="number" value={formData.no_of_packages} onChange={e => setFormData({...formData, no_of_packages: e.target.value})} className={inputClass} />
-                    </div>
-                    <div>
-                        <label className={labelClass}>Gross Wt (KG)</label>
-                        <input type="number" value={formData.gross_weight} onChange={e => setFormData({...formData, gross_weight: e.target.value})} className={inputClass} />
-                    </div>
-                    <div>
-                        <label className={labelClass}>Net Wt (KG)</label>
-                        <input type="number" value={formData.net_weight} onChange={e => setFormData({...formData, net_weight: e.target.value})} className={inputClass} />
-                    </div>
-                    <div>
-                        <label className={labelClass}>Volume (CBM)</label>
-                        <input type="number" value={formData.cbm} onChange={e => setFormData({...formData, cbm: e.target.value})} className={inputClass} />
-                    </div>
+                    <div><label className={labelClass}>Packages</label><input type="number" value={formData.no_of_packages} onChange={e => setFormData({...formData, no_of_packages: e.target.value})} className={inputClass} /></div>
+                    <div><label className={labelClass}>Gross Wt</label><input type="number" value={formData.gross_weight} onChange={e => setFormData({...formData, gross_weight: e.target.value})} className={inputClass} /></div>
+                    <div><label className={labelClass}>Net Wt</label><input type="number" value={formData.net_weight} onChange={e => setFormData({...formData, net_weight: e.target.value})} className={inputClass} /></div>
+                    <div><label className={labelClass}>Volume</label><input type="number" value={formData.cbm} onChange={e => setFormData({...formData, cbm: e.target.value})} className={inputClass} /></div>
                 </div>
             </div>
 
-            {/* Submit Button */}
             <div className="flex justify-end pt-2">
-                <button type="submit" disabled={saving} className="bg-slate-900 text-white font-bold py-4 px-12 rounded-xl shadow-lg hover:bg-black transition w-full md:w-auto">
-                    {saving ? 'Saving...' : 'Save Changes'}
-                </button>
+                <button type="submit" disabled={saving} className="bg-slate-900 text-white font-bold py-4 px-12 rounded-xl shadow-lg hover:bg-black transition w-full md:w-auto">{saving ? 'Saving...' : 'Save Changes'}</button>
             </div>
         </form>
       </div>
