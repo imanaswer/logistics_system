@@ -5,7 +5,6 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 // 1. Import the global config
 import { API_URL } from '../../../config'; 
-
 export default function ViewJob() {
   const router = useRouter();
   const params = useParams();
