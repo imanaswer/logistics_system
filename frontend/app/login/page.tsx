@@ -1,6 +1,8 @@
 "use client";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+// 1. Import the global config
+import { API_URL } from '../config'; 
 
 export default function Login() {
   const router = useRouter();
@@ -9,9 +11,6 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // 1. Define the API URL at the top level
-  // This automatically picks the Cloud URL on Vercel, or Localhost on your computer
-  const API_URL = 'https://logistics-backend-848b.onrender.com';
   const handleLogin = async (e: any) => {
     e.preventDefault();
     setLoading(true);
@@ -20,25 +19,26 @@ export default function Login() {
     try {
       console.log("Attempting login to:", `${API_URL}/api/login/`); // Debugging log
 
+      // 2. Use API_URL here
       const res = await fetch(`${API_URL}/api/login/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password }),
       });
 
-      // 2. CRITICAL FIX: Check if the server said "No" (400/401 error)
+      // 3. Check if the server said "No" (400/401 error)
       if (!res.ok) {
         throw new Error('Login failed');
       }
       
-      // 3. Save Credentials Securely
+      // 4. Save Credentials Securely
       const data = await res.json();
       
       if (data.token) {
         localStorage.setItem('token', data.token);
         localStorage.setItem('username', username);
         
-        // 4. Hard Redirect to force the dashboard to load fresh
+        // 5. Hard Redirect to force the dashboard to load fresh
         window.location.href = '/'; 
       } else {
         throw new Error('No token received');

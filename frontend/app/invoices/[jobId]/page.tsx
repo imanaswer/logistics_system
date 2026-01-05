@@ -3,6 +3,8 @@
 import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 import { useRouter, useParams } from "next/navigation";
+// 1. Import the global config
+import { API_URL } from '../../config'; 
 
 // Define Types for better DX
 interface ChargeType {
@@ -40,10 +42,11 @@ export default function InvoicePage() {
       const config = { headers: { Authorization: `Token ${token}` } };
 
       try {
+        // 2. Use API_URL here
         const [jobRes, chargeRes, txRes] = await Promise.all([
-          axios.get(`http://127.0.0.1:8000/api/jobs/${jobId}/`, config),
-          axios.get(`http://127.0.0.1:8000/api/chargetypes/`, config),
-          axios.get(`http://127.0.0.1:8000/api/transactions/`, config),
+          axios.get(`${API_URL}/api/jobs/${jobId}/`, config),
+          axios.get(`${API_URL}/api/chargetypes/`, config),
+          axios.get(`${API_URL}/api/transactions/`, config),
         ]);
 
         setJob(jobRes.data);
@@ -128,8 +131,9 @@ export default function InvoicePage() {
         validItems.map((i) => {
           const amount = parseFloat(i.amount);
           const vat = i.isTaxable ? amount * 0.05 : 0;
+          // 3. Use API_URL here
           return axios.post(
-            "http://127.0.0.1:8000/api/invoice-items/",
+            `${API_URL}/api/invoice-items/`,
             {
               job: Number(jobId),
               charge_type: Number(i.charge_type),

@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
+// 1. Import the global config
+import { API_URL } from '../../../config'; 
 
 export default function ViewJob() {
   const router = useRouter();
@@ -24,12 +26,12 @@ export default function ViewJob() {
       const config = { headers: { Authorization: `Token ${token}` } };
 
       try {
-        // FIX: Added ?t=${Date.now()} to prevent caching old data
-        const res = await axios.get(`http://127.0.0.1:8000/api/jobs/${jobId}/?t=${Date.now()}`, config);
+        // FIX: Use API_URL here
+        const res = await axios.get(`${API_URL}/api/jobs/${jobId}/?t=${Date.now()}`, config);
         setJob(res.data);
 
-        // Check for invoice items to decide button state
-        const invRes = await axios.get(`http://127.0.0.1:8000/api/invoice-items/?job=${jobId}&t=${Date.now()}`, config);
+        // Check for invoice items to decide button state (Using API_URL)
+        const invRes = await axios.get(`${API_URL}/api/invoice-items/?job=${jobId}&t=${Date.now()}`, config);
         if (invRes.data.length > 0) setHasInvoice(true);
 
         setLoading(false);
@@ -72,7 +74,8 @@ export default function ViewJob() {
     if (confirm("Are you sure you want to DELETE this Job? This cannot be undone.")) {
       try {
         const token = localStorage.getItem('token');
-        await axios.delete(`http://127.0.0.1:8000/api/jobs/${jobId}/`, {
+        // FIX: Use API_URL here
+        await axios.delete(`${API_URL}/api/jobs/${jobId}/`, {
             headers: { Authorization: `Token ${token}` }
         });
         alert("Job deleted.");

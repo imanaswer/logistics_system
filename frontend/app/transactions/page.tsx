@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
+// 1. Import the global config
+import { API_URL } from '../config'; 
 
 export default function Transactions() {
   const router = useRouter();
@@ -21,9 +23,10 @@ export default function Transactions() {
         if (!token) { window.location.href = '/login'; return; }
         try {
             const config = { headers: { Authorization: `Token ${token}` } };
+            // 2. Use API_URL here
             const [jobsRes, histRes] = await Promise.all([
-                axios.get('http://127.0.0.1:8000/api/jobs/', config),
-                axios.get('http://127.0.0.1:8000/api/transactions/', config)
+                axios.get(`${API_URL}/api/jobs/`, config),
+                axios.get(`${API_URL}/api/transactions/`, config)
             ]);
             setJobs(jobsRes.data);
             setHistory(histRes.data);
@@ -38,7 +41,8 @@ export default function Transactions() {
     const token = localStorage.getItem('token');
     const jobIdToSend = (selectedJob && selectedJob !== "") ? parseInt(selectedJob) : null;
     try {
-        const res = await axios.post('http://127.0.0.1:8000/api/transactions/', {
+        // 3. Use API_URL here
+        const res = await axios.post(`${API_URL}/api/transactions/`, {
             trans_type: activeTab, amount: parseFloat(amount), date, party_name: partyName, description, job: jobIdToSend
         }, { headers: { Authorization: `Token ${token}` } });
         setHistory([res.data, ...history]);
@@ -50,7 +54,8 @@ export default function Transactions() {
   const handleDelete = async (id: number) => {
       if(!confirm("Delete?")) return;
       try {
-          await axios.delete(`http://127.0.0.1:8000/api/transactions/${id}/`, { headers: { Authorization: `Token ${localStorage.getItem('token')}` } });
+          // 4. Use API_URL here
+          await axios.delete(`${API_URL}/api/transactions/${id}/`, { headers: { Authorization: `Token ${localStorage.getItem('token')}` } });
           setHistory(history.filter(t => t.id !== id));
       } catch(err) { alert("Failed"); }
   };

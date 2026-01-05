@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useRouter, useParams } from 'next/navigation';
+// 1. Import the global config
+import { API_URL } from '../../../config'; 
 
 export default function EditJobCustomer() {
   const router = useRouter();
@@ -48,8 +50,8 @@ export default function EditJobCustomer() {
       try {
         console.log("Fetching data for Job ID:", jobId); 
         
-        // 👇 CHANGE THIS LINE (Add ?t=${Date.now()})
-        const res = await axios.get(`http://127.0.0.1:8000/api/jobs/${jobId}/?t=${Date.now()}`, {
+        // 👇 CHANGED: Use API_URL here
+        const res = await axios.get(`${API_URL}/api/jobs/${jobId}/?t=${Date.now()}`, {
             headers: { Authorization: `Token ${token}` }
         });
         
@@ -110,7 +112,8 @@ export default function EditJobCustomer() {
     };
 
     try {
-      await axios.put(`http://127.0.0.1:8000/api/jobs/${jobId}/`, payload, {
+      // 👇 CHANGED: Use API_URL here
+      await axios.put(`${API_URL}/api/jobs/${jobId}/`, payload, {
         headers: { Authorization: `Token ${token}` }
       });
       alert("✅ Job Details Updated!");

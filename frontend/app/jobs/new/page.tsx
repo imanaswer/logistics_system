@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
+// 1. Import the global config
+import { API_URL } from '../../config'; 
 
 export default function NewJob() {
   const router = useRouter();
@@ -80,7 +82,8 @@ export default function NewJob() {
     console.log("SENDING PAYLOAD:", payload);
 
     try {
-      await axios.post('http://127.0.0.1:8000/api/jobs/', payload, {
+      // FIX: Use API_URL here
+      await axios.post(`${API_URL}/api/jobs/`, payload, {
           headers: { Authorization: `Token ${token}` }
       });
 

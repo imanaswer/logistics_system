@@ -2,6 +2,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
+// 1. Import the global config
+import { API_URL } from '../config'; 
 
 export default function Reports() {
   const router = useRouter();
@@ -26,9 +28,10 @@ export default function Reports() {
         if (!token) { window.location.href = '/login'; return; }
 
         try {
+            // FIX: Use API_URL here
             const [jobsRes, transRes] = await Promise.all([
-                axios.get('http://127.0.0.1:8000/api/jobs/', { headers: { Authorization: `Token ${token}` } }),
-                axios.get('http://127.0.0.1:8000/api/transactions/', { headers: { Authorization: `Token ${token}` } })
+                axios.get(`${API_URL}/api/jobs/`, { headers: { Authorization: `Token ${token}` } }),
+                axios.get(`${API_URL}/api/transactions/`, { headers: { Authorization: `Token ${token}` } })
             ]);
             
             const map: {[key: number]: string} = {};

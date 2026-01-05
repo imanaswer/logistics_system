@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useRouter, useParams } from 'next/navigation';
+// 1. Import the global config
+import { API_URL } from '../../../config'; 
 
 export default function EditJob() {
   const router = useRouter();
@@ -26,7 +28,8 @@ export default function EditJob() {
   useEffect(() => {
     const fetchJob = async () => {
       try {
-        const res = await axios.get(`http://127.0.0.1:8000/api/jobs/${jobId}/`);
+        // IMPROVEMENT: Added timestamp (?t=...) to prevent caching old data
+        const res = await axios.get(`${API_URL}/api/jobs/${jobId}/?t=${Date.now()}`);
         const job = res.data;
         
         setFormData({
@@ -60,7 +63,8 @@ export default function EditJob() {
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     try {
-      await axios.patch(`http://127.0.0.1:8000/api/jobs/${jobId}/`, {
+      // Use API_URL for the update
+      await axios.patch(`${API_URL}/api/jobs/${jobId}/`, {
         transport_mode: formData.transport_mode,
         port_loading: formData.port_loading,
         port_discharge: formData.port_discharge,

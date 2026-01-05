@@ -2,7 +2,8 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useRouter, useParams } from "next/navigation";
-
+// 1. Import the global config
+import { API_URL } from '../../../config'; 
 export default function ProfessionalInvoiceView() {
   const router = useRouter();
   const { jobId } = useParams();
@@ -23,11 +24,11 @@ export default function ProfessionalInvoiceView() {
       try {
         const config = { headers: { Authorization: `Token ${token}` } };
 
-        // Added cache-busting (?t=...) to ensure VAT number is fresh
+        // 2. Use API_URL here
         const [jobRes, itemsRes, txRes] = await Promise.all([
-          axios.get(`http://127.0.0.1:8000/api/jobs/${jobId}/?t=${Date.now()}`, config),
-          axios.get(`http://127.0.0.1:8000/api/invoice-items/?t=${Date.now()}`, config),
-          axios.get(`http://127.0.0.1:8000/api/transactions/?t=${Date.now()}`, config),
+          axios.get(`${API_URL}/api/jobs/${jobId}/?t=${Date.now()}`, config),
+          axios.get(`${API_URL}/api/invoice-items/?t=${Date.now()}`, config),
+          axios.get(`${API_URL}/api/transactions/?t=${Date.now()}`, config),
         ]);
 
         setJob(jobRes.data);

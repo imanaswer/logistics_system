@@ -4,7 +4,8 @@ import axios from 'axios';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Cell, Tooltip } from 'recharts';
-
+// 1. Import the global config
+import { API_URL } from './config';
 // --- INTERFACES ---
 interface Job {
   id: number;
@@ -67,10 +68,11 @@ export default function Dashboard() {
   const fetchData = async (token: string) => {
     try {
       const config = { headers: { Authorization: `Token ${token}` } };
+      // 2. Use API_URL here
       const [jobsRes, transRes, auditRes] = await Promise.all([
-        axios.get('http://127.0.0.1:8000/api/jobs/', config),
-        axios.get('http://127.0.0.1:8000/api/transactions/', config),
-        axios.get('http://127.0.0.1:8000/api/audit-logs/', config)
+        axios.get(`${API_URL}/api/jobs/`, config),
+        axios.get(`${API_URL}/api/transactions/`, config),
+        axios.get(`${API_URL}/api/audit-logs/`, config)
       ]);
       
       setJobs(jobsRes.data);
@@ -91,7 +93,8 @@ export default function Dashboard() {
     if (!confirm("Are you sure? This will delete the Job and its Invoice.")) return;
     try {
         const token = localStorage.getItem('token');
-        await axios.delete(`http://127.0.0.1:8000/api/jobs/${id}/`, { headers: { Authorization: `Token ${token}` } });
+        // 3. Use API_URL here
+        await axios.delete(`${API_URL}/api/jobs/${id}/`, { headers: { Authorization: `Token ${token}` } });
         setJobs(jobs.filter(job => job.id !== id));
     } catch (error) { alert("Delete failed."); }
   };

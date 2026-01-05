@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useParams, useRouter } from "next/navigation";
+// 1. Import the global config (Adjust the dots if your folder is different)
+import { API_URL } from '../../../config'; 
 
 /* ================= TYPES & CONSTANTS ================= */
 
@@ -22,7 +24,8 @@ interface Job {
   client_details?: { name: string; vat_number?: string };
 }
 
-const API_BASE = "http://127.0.0.1:8000/api";
+// 2. Use the Cloud URL from config
+const API_BASE = `${API_URL}/api`;
 const EMPTY_ROW: InvoiceRow = { charge_type: "", description: "", amount: "", vat: 0, total: 0 };
 
 /* ================= COMPONENTS (INLINE ICONS) ================= */
