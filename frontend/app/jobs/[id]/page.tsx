@@ -3,8 +3,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useRouter, useParams } from 'next/navigation';
 // 1. Import the global config
-import { API_URL } from '../../../config'; 
-
+import { API_URL } from '../../config';
 export default function EditJob() {
   const router = useRouter();
   const params = useParams(); 
