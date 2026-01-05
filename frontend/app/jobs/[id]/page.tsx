@@ -1,238 +1,225 @@
 "use client";
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useRouter, useParams } from 'next/navigation';
-// 1. Import the global config
-import { API_URL } from '../../config';
-export default function EditJob() {
+import { useRouter } from 'next/navigation';
+// 1. Import the global config (Go up 2 levels to 'app')
+import { API_URL } from '../../config'; 
+
+export default function NewJob() {
   const router = useRouter();
-  const params = useParams(); 
-  const jobId = params.id;
+  
+  // --- FORM STATE ---
+  const [clientName, setClientName] = useState('');
+  const [clientPhone, setClientPhone] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
+  const [clientAddress, setClientAddress] = useState('');
+  const [vatNumber, setVatNumber] = useState(''); 
+  
+  const [transportMode, setTransportMode] = useState('SEA');
+  const [portLoading, setPortLoading] = useState('');
+  const [portDischarge, setPortDischarge] = useState('');
+  const [shipmentInvoiceNo, setShipmentInvoiceNo] = useState('');
+  
+  const [noOfPackages, setNoOfPackages] = useState<string>('');
+  const [grossWeight, setGrossWeight] = useState<string>('');
+  const [netWeight, setNetWeight] = useState<string>('');
+  const [cbm, setCbm] = useState<string>('');
+  
+  const [jobDate, setJobDate] = useState(new Date().toISOString().split('T')[0]);
+  const [loading, setLoading] = useState(false);
 
-  const [loading, setLoading] = useState(true);
-  const [formData, setFormData] = useState({
-    transport_mode: '',
-    port_loading: '',
-    port_discharge: '',
-    shipment_invoice_no: '',
-    is_finished: false,
-    // New Fields
-    no_of_packages: '',
-    gross_weight: '',
-    net_weight: '',
-    client_name: '', // Read-only display
-  });
-
-  // 1. Fetch Existing Data
   useEffect(() => {
-    const fetchJob = async () => {
-      try {
-        // IMPROVEMENT: Added timestamp (?t=...) to prevent caching old data
-        const res = await axios.get(`${API_URL}/api/jobs/${jobId}/?t=${Date.now()}`);
-        const job = res.data;
-        
-        setFormData({
-          transport_mode: job.transport_mode,
-          port_loading: job.port_loading,
-          port_discharge: job.port_discharge,
-          shipment_invoice_no: job.shipment_invoice_no,
-          is_finished: job.is_finished,
-          no_of_packages: job.no_of_packages,
-          gross_weight: job.gross_weight,
-          net_weight: job.net_weight,
-          client_name: job.client_details?.name || 'Unknown' 
-        });
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching job:", error);
-        router.push('/');
-      }
-    };
+    const token = localStorage.getItem('token');
+    if (!token) window.location.href = '/login';
+  }, []);
 
-    if (jobId) fetchJob();
-  }, [jobId, router]);
-
-  // 2. Handle Input Changes
-  const handleChange = (e: any) => {
-    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-    setFormData({ ...formData, [e.target.name]: value });
-  };
-
-  // 3. Submit Updates
   const handleSubmit = async (e: any) => {
     e.preventDefault();
+    setLoading(true);
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = '/login';
+        return;
+    }
+
+    if (!clientName.trim()) {
+        alert("Client Name is required.");
+        setLoading(false);
+        return;
+    }
+
+    const pkg = parseFloat(noOfPackages) || 0;
+    const gw = parseFloat(grossWeight) || 0;
+    const nw = parseFloat(netWeight) || 0;
+    const vol = parseFloat(cbm) || 0;
+
+    const payload = {
+      job_date: jobDate,
+      vat_number: vatNumber, 
+      client: {   
+        name: clientName,
+        phone: clientPhone || "N/A",
+        email: clientEmail || null,
+        address: clientAddress || "",
+        vat_number: vatNumber 
+      },
+      transport_mode: transportMode,
+      port_loading: portLoading,
+      port_discharge: portDischarge,
+      shipment_invoice_no: shipmentInvoiceNo,
+      no_of_packages: pkg,
+      gross_weight: gw,
+      net_weight: nw,
+      cbm: vol
+    };
+
     try {
-      // Use API_URL for the update
-      await axios.patch(`${API_URL}/api/jobs/${jobId}/`, {
-        transport_mode: formData.transport_mode,
-        port_loading: formData.port_loading,
-        port_discharge: formData.port_discharge,
-        shipment_invoice_no: formData.shipment_invoice_no,
-        is_finished: formData.is_finished,
-        no_of_packages: formData.no_of_packages,
-        gross_weight: formData.gross_weight,
-        net_weight: formData.net_weight,
+      // 2. Use API_URL here
+      await axios.post(`${API_URL}/api/jobs/`, payload, {
+          headers: { Authorization: `Token ${token}` }
       });
 
-      router.push(`/jobs/${jobId}/view`); // Go to View page after save
-    } catch (error) {
-      console.error("Error updating job:", error);
-      alert("Failed to update job.");
+      alert("✅ Job Created Successfully!");
+      router.push('/'); 
+
+    } catch (error: any) {
+      console.error("FULL ERROR:", error);
+      setLoading(false);
+
+      if (error.response) {
+          const serverError = JSON.stringify(error.response.data, null, 2);
+          alert(`Server Rejected Request:\n${serverError}`);
+          
+          if (error.response.status === 401) {
+              window.location.href = '/login';
+          }
+      } else {
+          alert("Network Error: Could not reach the server.");
+      }
     }
   };
 
-  if (loading) return <div className="p-10 text-gray-500">Loading job details...</div>;
-
-  // Reusable Styles (Consistent with Create Page)
-  const inputStyle = "w-full p-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all";
-  const labelStyle = "block text-xs font-bold text-gray-600 uppercase mb-1 tracking-wide";
+  const sectionClass = "bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6";
+  const labelClass = "block text-xs font-bold text-slate-500 uppercase tracking-wide mb-1.5";
+  const inputClass = "w-full p-3 rounded-lg border border-slate-200 font-bold text-slate-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition";
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8 flex justify-center font-sans">
-      <div className="w-full max-w-4xl bg-white rounded-xl shadow-xl p-8 border border-gray-100">
+    <div className="min-h-screen bg-slate-50 p-6 flex justify-center font-sans">
+      <div className="w-full max-w-4xl space-y-6">
         
-        <div className="flex justify-between items-center mb-8 border-b border-gray-200 pb-4">
-          <h2 className="text-2xl font-bold text-gray-900">Edit Job #{jobId}</h2>
-          <span className="text-sm font-semibold text-blue-800 bg-blue-100 px-4 py-2 rounded-full">
-            Customer: {formData.client_name}
-          </span>
-        </div>
-        
-        <form onSubmit={handleSubmit} className="space-y-8">
-          
-          {/* --- Section 1: Job Status --- */}
-          <div className="bg-yellow-50 p-6 rounded-xl border border-yellow-100 flex items-center justify-between">
+        <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <div>
-              <h3 className="font-bold text-yellow-900">Job Status</h3>
-              <p className="text-sm text-yellow-700">Toggle this when the shipment is delivered and invoiced.</p>
+                <h1 className="text-2xl font-black text-slate-900 tracking-tight">Create New Job Card</h1>
+                <p className="text-sm text-slate-500 font-medium mt-1">Enter shipment details to generate a job card.</p>
             </div>
-            <div className="flex items-center space-x-3 bg-white px-4 py-2 rounded-lg border border-yellow-200">
-                <input 
-                type="checkbox" 
-                name="is_finished" 
-                checked={formData.is_finished} 
-                onChange={handleChange}
-                className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
-                />
-                <label className="text-gray-900 font-bold text-sm">Mark as Completed</label>
-            </div>
-          </div>
+            <button 
+                onClick={() => router.push('/')} 
+                className="text-slate-500 hover:text-red-600 font-bold text-sm bg-slate-100 hover:bg-red-50 px-4 py-2 rounded-lg transition"
+            >
+                Cancel
+            </button>
+        </div>
 
-          {/* --- Section 2: Shipment Details --- */}
-          <div className="bg-gray-50 p-6 rounded-xl border border-gray-200">
-            <h3 className="font-bold text-gray-900 mb-4 flex items-center">
-              <span className="bg-gray-200 text-gray-700 w-6 h-6 rounded-full flex items-center justify-center text-xs mr-2">1</span>
-              Shipment Routing
-            </h3>
-            <div className="grid grid-cols-2 gap-6">
-              
-              <div>
-                <label className={labelStyle}>Transport Mode</label>
-                <select 
-                  name="transport_mode" 
-                  value={formData.transport_mode} 
-                  onChange={handleChange} 
-                  className={inputStyle}
+        <form onSubmit={handleSubmit} className="space-y-6">
+            
+            <div className={sectionClass}>
+                <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                    <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900">Customer Information</h3>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label className={labelClass}>Customer Name <span className="text-red-500">*</span></label>
+                        <input type="text" required value={clientName} onChange={e => setClientName(e.target.value)} className={inputClass} placeholder="Company or Person Name" />
+                    </div>
+                    <div>
+                        <label className={labelClass}>VAT Number</label>
+                        <input type="text" value={vatNumber} onChange={e => setVatNumber(e.target.value)} className={inputClass} placeholder="Ex: 123456789" />
+                    </div>
+                    <div>
+                        <label className={labelClass}>Phone Number</label>
+                        <input type="text" value={clientPhone} onChange={e => setClientPhone(e.target.value)} className={inputClass} placeholder="+968..." />
+                    </div>
+                    <div>
+                        <label className={labelClass}>Email Address</label>
+                        <input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} className={inputClass} placeholder="client@example.com" />
+                    </div>
+                    <div className="md:col-span-2">
+                        <label className={labelClass}>Full Address</label>
+                        <textarea value={clientAddress} onChange={e => setClientAddress(e.target.value)} className={inputClass} rows={2} placeholder="Building, Street, City..." />
+                    </div>
+                </div>
+            </div>
+
+            <div className={sectionClass}>
+                <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+                    <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"></path></svg>
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-900">Shipment Details</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label className={labelClass}>Transport Mode</label>
+                        <select value={transportMode} onChange={e => setTransportMode(e.target.value)} className={inputClass}>
+                            <option value="SEA">Sea Freight</option>
+                            <option value="AIR">Air Freight</option>
+                            <option value="LAND">Land Freight</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className={labelClass}>Job Date</label>
+                        <input type="date" required value={jobDate} onChange={e => setJobDate(e.target.value)} className={inputClass} />
+                    </div>
+                    <div>
+                        <label className={labelClass}>Port of Loading</label>
+                        <input type="text" required value={portLoading} onChange={e => setPortLoading(e.target.value)} className={inputClass} placeholder="Ex: Jebel Ali" />
+                    </div>
+                    <div>
+                        <label className={labelClass}>Port of Discharge</label>
+                        <input type="text" required value={portDischarge} onChange={e => setPortDischarge(e.target.value)} className={inputClass} placeholder="Ex: Sohar Port" />
+                    </div>
+                    <div className="md:col-span-2">
+                         <label className={labelClass}>Reference / Invoice No</label>
+                         <input type="text" value={shipmentInvoiceNo} onChange={e => setShipmentInvoiceNo(e.target.value)} className={inputClass} placeholder="Will be auto-filled if blank" />
+                    </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div>
+                        <label className={labelClass}>Packages</label>
+                        <input type="number" value={noOfPackages} onChange={e => setNoOfPackages(e.target.value)} className={inputClass} placeholder="0" />
+                    </div>
+                    <div>
+                        <label className={labelClass}>Gross Wt (KG)</label>
+                        <input type="number" value={grossWeight} onChange={e => setGrossWeight(e.target.value)} className={inputClass} placeholder="0.0" />
+                    </div>
+                    <div>
+                        <label className={labelClass}>Net Wt (KG)</label>
+                        <input type="number" value={netWeight} onChange={e => setNetWeight(e.target.value)} className={inputClass} placeholder="0.0" />
+                    </div>
+                    <div>
+                        <label className={labelClass}>Volume (CBM)</label>
+                        <input type="number" value={cbm} onChange={e => setCbm(e.target.value)} className={inputClass} placeholder="0.0" />
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+                <button 
+                    type="submit" 
+                    disabled={loading}
+                    className="bg-slate-900 hover:bg-black text-white text-base font-bold py-4 px-12 rounded-xl shadow-lg hover:shadow-xl transition transform active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed w-full md:w-auto"
                 >
-                  <option value="SEA">Sea Freight</option>
-                  <option value="AIR">Air Freight</option>
-                  <option value="LAND">Land Transport</option>
-                </select>
-              </div>
-
-              <div>
-                <label className={labelStyle}>Invoice No</label>
-                <input 
-                  name="shipment_invoice_no" 
-                  value={formData.shipment_invoice_no} 
-                  onChange={handleChange} 
-                  placeholder="Invoice No" 
-                  className={inputStyle} 
-                />
-              </div>
-
-              <div>
-                <label className={labelStyle}>Port of Loading</label>
-                <input 
-                  name="port_loading" 
-                  value={formData.port_loading} 
-                  onChange={handleChange} 
-                  className={inputStyle} 
-                  required 
-                />
-              </div>
-
-              <div>
-                <label className={labelStyle}>Port of Discharge</label>
-                <input 
-                  name="port_discharge" 
-                  value={formData.port_discharge} 
-                  onChange={handleChange} 
-                  className={inputStyle} 
-                  required 
-                />
-              </div>
+                    {loading ? 'Processing...' : 'Create Job Card'}
+                </button>
             </div>
-          </div>
 
-           {/* --- Section 3: Cargo Details (NEW) --- */}
-           <div className="bg-green-50 p-6 rounded-xl border border-green-100">
-            <h3 className="font-bold text-green-900 mb-4 flex items-center">
-              <span className="bg-green-200 text-green-800 w-6 h-6 rounded-full flex items-center justify-center text-xs mr-2">2</span>
-              Cargo Weight & Packages
-            </h3>
-            <div className="grid grid-cols-3 gap-6">
-              <div>
-                <label className={labelStyle}>No. of Packages</label>
-                <input 
-                  type="number" 
-                  name="no_of_packages" 
-                  value={formData.no_of_packages}
-                  onChange={handleChange} 
-                  className={inputStyle} 
-                />
-              </div>
-              <div>
-                <label className={labelStyle}>Gross Weight (KG)</label>
-                <input 
-                  type="number" 
-                  step="0.001" 
-                  name="gross_weight" 
-                  value={formData.gross_weight}
-                  onChange={handleChange} 
-                  className={inputStyle} 
-                />
-              </div>
-              <div>
-                <label className={labelStyle}>Net Weight (KG)</label>
-                <input 
-                  type="number" 
-                  step="0.001" 
-                  name="net_weight" 
-                  value={formData.net_weight}
-                  onChange={handleChange} 
-                  className={inputStyle} 
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Buttons */}
-          <div className="flex space-x-4 pt-4 border-t border-gray-100">
-            <button 
-              type="button"
-              onClick={() => router.back()}
-              className="w-1/3 bg-gray-100 text-gray-700 font-bold py-3 rounded-lg hover:bg-gray-200 transition"
-            >
-              Cancel
-            </button>
-            <button 
-              type="submit" 
-              className="w-2/3 bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition shadow-lg"
-            >
-              Save Changes
-            </button>
-          </div>
         </form>
       </div>
     </div>
