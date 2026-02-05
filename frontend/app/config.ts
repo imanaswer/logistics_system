@@ -2,12 +2,9 @@
 // This file manages the backend URL for all API calls
 
 // IMPORTANT: Use environment variable for production deployments
-// Set NEXT_PUBLIC_API_URL in Vercel dashboard
+// Set NEXT_PUBLIC_API_URL in environment variables
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://logistics-system-oq8b.onrender.com';
-
-// For local development, you can temporarily change to:
-// export const API_URL = 'http://localhost:8001';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 // Validate URL format
 if (typeof window !== 'undefined') {
