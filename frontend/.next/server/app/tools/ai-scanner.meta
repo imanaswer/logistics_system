@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/tools/layout,_N_T_/tools/ai-scanner/layout,_N_T_/tools/ai-scanner/page,_N_T_/tools/ai-scanner"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/tools/ai-scanner/__PAGE__",
+    "/tools/ai-scanner",
+    "/tools",
+    "/_index",
+    "/_head"
+  ]
+}

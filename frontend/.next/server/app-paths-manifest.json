@@ -1,0 +1,18 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/invoices/[jobId]/edit/page": "app/invoices/[jobId]/edit/page.js",
+  "/invoices/[jobId]/page": "app/invoices/[jobId]/page.js",
+  "/invoices/[jobId]/view/page": "app/invoices/[jobId]/view/page.js",
+  "/jobs/[id]/edit/page": "app/jobs/[id]/edit/page.js",
+  "/jobs/[id]/page": "app/jobs/[id]/page.js",
+  "/jobs/[id]/view/page": "app/jobs/[id]/view/page.js",
+  "/jobs/new/page": "app/jobs/new/page.js",
+  "/login/page": "app/login/page.js",
+  "/page": "app/page.js",
+  "/reports/ledger/page": "app/reports/ledger/page.js",
+  "/reports/page": "app/reports/page.js",
+  "/tools/ai-scanner/page": "app/tools/ai-scanner/page.js",
+  "/transactions/page": "app/transactions/page.js"
+}
