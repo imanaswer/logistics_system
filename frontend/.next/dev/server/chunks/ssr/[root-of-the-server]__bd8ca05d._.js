@@ -118,7 +118,7 @@ __turbopack_context__.s([
     "API_URL",
     ()=>API_URL
 ]);
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const API_URL = ("TURBOPACK compile-time value", "https://logistics-system-oq8b.onrender.com") || '';
 // Validate URL format
 if ("TURBOPACK compile-time falsy", 0) //TURBOPACK unreachable
 ;

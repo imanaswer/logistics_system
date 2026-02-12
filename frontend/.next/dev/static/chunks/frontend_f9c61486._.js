@@ -11,7 +11,7 @@ __turbopack_context__.s([
     ()=>API_URL
 ]);
 var __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$node_modules$2f$next$2f$dist$2f$build$2f$polyfills$2f$process$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__ = /*#__PURE__*/ __turbopack_context__.i("[project]/frontend/node_modules/next/dist/build/polyfills/process.js [app-client] (ecmascript)");
-const API_URL = __TURBOPACK__imported__module__$5b$project$5d2f$frontend$2f$node_modules$2f$next$2f$dist$2f$build$2f$polyfills$2f$process$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"].env.NEXT_PUBLIC_API_URL || '';
+const API_URL = ("TURBOPACK compile-time value", "https://logistics-system-oq8b.onrender.com") || '';
 // Validate URL format
 if ("TURBOPACK compile-time truthy", 1) {
     console.log('🔗 Backend API URL:', API_URL);
