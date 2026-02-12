@@ -143,25 +143,27 @@ export default function Reports() {
 
     // 4. LEDGER CALCULATION (Accounting Logic)
     return result.map(t => {
-      const amount = Number(t.amount || 0);
+      const amount = Math.abs(Number(t.amount || 0));
       
-      // DEBIT (+): Money owed to you (Invoices)
-      const isDebit = t.trans_type === "INVOICE";
-      
-      // CREDIT (-): Money paid to you (CR = Cash Receive, BR = Bank Receive)
+      // CREDIT: Money received (CR = Cash Receive, BR = Bank Receive)
       const isCredit = ["CR", "BR"].includes(t.trans_type);
       
-      // PAID OUT (-): Money you paid out (CP = Cash Pay, BP = Bank Pay)
+      // PAID OUT: Money you paid out (CP = Cash Pay, BP = Bank Pay)
       const isPaidOut = ["CP", "BP"].includes(t.trans_type);
+      
+      // DEBIT: Invoices (money owed to you)
+      const isDebit = t.trans_type === "INVOICE";
 
-      if (isDebit) runningBalance += amount;
-      if (isCredit) runningBalance += amount;     // Money received IN
-      if (isPaidOut) runningBalance -= amount;    // Money paid OUT
+      const received = isCredit ? amount : 0;
+      const paid = isPaidOut ? amount : 0;
+
+      // THE FIX: Add received, subtract paid
+      runningBalance += (received - paid);
 
       return {
         ...t,
-        received: isCredit ? amount : 0,
-        paid: isPaidOut ? amount : 0,
+        received,
+        paid,
         invoiceAmt: isDebit ? amount : 0,
         currentBalance: runningBalance,
       };
