@@ -168,8 +168,6 @@ export default function Reports() {
       const received = isCredit ? amount : 0;
       const paid = isPaidOut ? amount : 0;
 
-      // THE FIX: Add received, subtract paid
-      runningBalance += (received - paid);
 
       return {
         ...t,
