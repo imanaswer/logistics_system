@@ -38,6 +38,8 @@ export default function Transactions() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     const init = async () => {
@@ -390,19 +392,20 @@ export default function Transactions() {
           </div>
         </div>
 
-        {/* RIGHT */}
+  {/* RIGHT */}
         <div className="w-full max-w-md space-y-4">
           <h3 className="font-bold text-black text-sm">
             Recent Transactions
           </h3>
-
+        
           {history.length === 0 && (
             <div className="text-sm text-slate-600 italic p-4">
               No transactions yet
             </div>
           )}
-
-          {history.slice(0, 10).map((t) => (
+        
+          {/* ✅ NEW: Paginated transactions */}
+          {history.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((t) => (
             <div
               key={t.id}
               className="bg-white p-4 rounded-xl border shadow-sm flex justify-between items-center"
@@ -424,7 +427,7 @@ export default function Transactions() {
                   <p className="text-xs text-slate-500 mt-1">{t.description}</p>
                 )}
               </div>
-
+        
               <div className="flex items-center gap-3">
                 {t.client && (
                   <button
@@ -456,6 +459,29 @@ export default function Transactions() {
               </div>
             </div>
           ))}
+          
+          {/* ✅ NEW: Pagination Controls */}
+          {history.length > itemsPerPage && (
+            <div className="flex items-center justify-between bg-white p-3 rounded-xl border">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 text-xs font-bold bg-slate-100 rounded hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                ← Previous
+              </button>
+              <span className="text-xs font-bold text-slate-600">
+                Page {currentPage} of {Math.ceil(history.length / itemsPerPage)}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(Math.ceil(history.length / itemsPerPage), p + 1))}
+                disabled={currentPage >= Math.ceil(history.length / itemsPerPage)}
+                className="px-3 py-1 text-xs font-bold bg-slate-100 rounded hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next →
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
