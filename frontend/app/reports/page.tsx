@@ -144,19 +144,18 @@ const reportData = useMemo(() => {
 
     // CREDIT: Money received (CR = Cash Receive, BR = Bank Receive)
     const isCredit = ["CR", "BR"].includes(t.trans_type);
-
-    // PAID OUT: Money you paid out (CP = Cash Pay, BP = Bank Pay)
     const isPaidOut = ["CP", "BP"].includes(t.trans_type);
-
-    // DEBIT: Invoices (money owed to you - usually handled in professional ledger)
     const isDebit = t.trans_type === "INVOICE";
-
+    
+    /* ✅ FIXED ACCOUNTING LOGIC */
     const received = isCredit ? amount : 0;
-    const paid = isPaidOut ? amount : 0;
-
-    // ✅ UPDATE RUNNING BALANCE HERE
-    // This ensures the balance grows or shrinks row-by-row
+    
+    /* 🔥 invoices must behave like debit */
+    const paid = (isPaidOut || isDebit) ? amount : 0;
+    
+    /* 🔥 FIXED RUNNING BALANCE */
     runningBalance += (received - paid);
+
 
     return {
       ...t,
