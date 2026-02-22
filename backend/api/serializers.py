@@ -93,21 +93,28 @@ class TransactionSerializer(serializers.ModelSerializer):
         allow_null=True
     )
 
-    # --- NEW SMART FIELDS ---
+        # --- NEW SMART FIELDS ---
     # This field will be used by the report to always show a name
     display_party_name = serializers.SerializerMethodField()
     
     # Keep this for backward compatibility if needed
-    client_name = serializers.ReadOnlyField(source='client.name')
+    client_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Transaction
         fields = [
             'id', 'date', 'amount', 'trans_type', 'description', 
             'job', 'client', 'client_name', 'display_party_name', 
-            'party_name', 'voucher_no'
+            'party_name', 'voucher_no', 'bank_name', 'cheque_no'
         ]
-
+    
+    def get_client_name(self, obj):
+        """Safely get client name"""
+        if obj.client:
+            return obj.client.name
+        if obj.job and obj.job.client:
+            return obj.job.client.name
+        return None
     def get_display_party_name(self, obj):
         """
         Logic: 
