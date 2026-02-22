@@ -243,7 +243,7 @@ def ledger_statement(request):
     # Get transactions for this client
     transactions = Transaction.objects.filter(
         Q(client=client) | Q(job__client=client)
-    )
+    ).exclude(trans_type='INVOICE')
 
     # Date filters
     if start_date:
