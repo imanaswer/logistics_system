@@ -109,7 +109,15 @@ export default function Reports() {
         "General Transaction"
       ).trim().toUpperCase();
 
-      console.log(`🔍 Transaction #${t.id}: display_party_name="${t.display_party_name}", party_name="${t.party_name}", job=${t.job}, nameFromJob="${nameFromJob}", resolvedName="${resolvedName}"`);
+      console.log(`🔍 Transaction #${t.id}: display_party_name="${t.display_party_name}", party_name="${t.party_name}", job=${t.job}, nameFromJob="${nameFromJob}", resolvedName="${resolvedName}", trans_type="${t.trans_type}"`);
+
+      return { ...t, resolvedName };
+    });
+
+    // 1.5 EXCLUDE INVOICE TYPE - These are shadow entries handled separately in the professional ledger
+    // Regular cash flow reports should only show actual cash movements (CR, BR, CP, BP)
+    result = result.filter(t => t.trans_type !== 'INVOICE');
+    console.log(`🔍 DEBUG: After excluding INVOICE transactions:`, result.length, "transactions");
 
       return { ...t, resolvedName };
     });
