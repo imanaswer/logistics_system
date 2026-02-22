@@ -147,22 +147,22 @@ class Transaction(models.Model):
         
         return f"{prefix}-{new_num:03d}"
     
-    def save(self, *args, **kwargs):
-    # Auto-generate voucher number if not set
-    if not self.voucher_no:
-        self.voucher_no = self.generate_voucher_no()
-    
-    # FIX: Auto-populate client from job.client when job is set but client is missing
-    # This ensures job-linked transactions always resolve to a client
-    if self.job and not self.client:
-        self.client = self.job.client
-    
-    # FIX: Always update party_name from client to ensure consistency
-    # This is critical for reports to show job-linked transactions
-    if self.client and not self.party_name:
-        self.party_name = self.client.name
-    
-    super().save(*args, **kwargs)
+   def save(self, *args, **kwargs):
+        # Auto-generate voucher number if not set (Indented 8 spaces from start of file)
+        if not self.voucher_no:
+            self.voucher_no = self.generate_voucher_no()
+        
+        # FIX: Auto-populate client from job.client when job is set but client is missing
+        # This ensures job-linked transactions always resolve to a client
+        if self.job and not self.client:
+            self.client = self.job.client
+        
+        # FIX: Always update party_name from client to ensure consistency
+        # This is critical for reports to show job-linked transactions
+        if self.client and not self.party_name:
+            self.party_name = self.client.name
+        
+        super().save(*args, **kwargs)
     
     class Meta:
         ordering = ['-date', '-id']
