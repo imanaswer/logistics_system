@@ -100,84 +100,73 @@ export default function Reports() {
   }, []);
 
 // --- FILTER + LEDGER LOGIC ---
-  const reportData = useMemo(() => {
-    let runningBalance = 0;
-    
-    console.log("🔍 DEBUG: reportData calculation started with", transactions.length, "transactions");
-    
-    // 1. Normalize name resolution so filtering actually works
-    let result = transactions.map(t => {
-      const nameFromJob = t.job ? jobMap[t.job] : null;
-      const resolvedName = (
-        t.display_party_name || 
-        t.party_name || 
-        nameFromJob || 
-        "General Transaction"
-      ).trim().toUpperCase();
+const reportData = useMemo(() => {
+  let runningBalance = 0; // Initialize our accumulator
 
-      console.log(`🔍 Transaction #${t.id}: display_party_name="${t.display_party_name}", party_name="${t.party_name}", job=${t.job}, nameFromJob="${nameFromJob}", resolvedName="${resolvedName}", trans_type="${t.trans_type}"`);
+  // 1. Normalize name resolution
+  let result = transactions.map((t) => {
+    const nameFromJob = t.job ? jobMap[t.job] : null;
+    const resolvedName = (
+      t.display_party_name ||
+      t.party_name ||
+      nameFromJob ||
+      "General Transaction"
+    ).trim()
+    .toUpperCase();
 
-      return { ...t, resolvedName };
-    });
+    return { ...t, resolvedName };
+  });
 
-    // 1.5 EXCLUDE INVOICE TYPE - These are shadow entries handled separately in the professional ledger
-    // Regular cash flow reports should only show actual cash movements (CR, BR, CP, BP)
-    runningBalance += (received - paid - (isDebit ? amount : 0));
+  // ✅ FIX: Removed the orphaned line 125 that was causing "Cannot find name 'received'"
 
+  // 2. APPLY CLIENT FILTER
+  if (selectedClient !== "ALL") {
+    const term = selectedClient.toUpperCase();
+    result = result.filter((t) => t.resolvedName === term);
+  }
 
-    // 2. APPLY CLIENT FILTER
-    if (selectedClient !== "ALL") {
-      const term = selectedClient.toUpperCase();
-      console.log(`🔍 DEBUG: Filtering by client: "${term}"`);
-      console.log(`🔍 DEBUG: Before filter:`, result.length, "transactions");
-      result = result.filter(t => {
-        const matches = t.resolvedName === term;
-        console.log(`🔍   Transaction #${t.id}: resolvedName="${t.resolvedName}" ${matches ? "✅ MATCHES" : "❌ NO MATCH"}`);
-        return matches;
-      });
-      console.log(`🔍 DEBUG: After filter:`, result.length, "transactions");
-    }
+  // 3. APPLY DATE FILTER
+  const start = startDate ? new Date(startDate) : null;
+  const end = endDate ? new Date(endDate) : null;
 
-    // 3. APPLY DATE FILTER
-    // Convert strings to date objects for accurate comparison
-    const start = startDate ? new Date(startDate) : null;
-    const end = endDate ? new Date(endDate) : null;
-    
-    if (start) {
-        result = result.filter(t => new Date(t.date) >= start);
-    }
-    if (end) {
-        // Set end of day for the "To" date
-        end.setHours(23, 59, 59, 999);
-        result = result.filter(t => new Date(t.date) <= end);
-    }
+  if (start) {
+    result = result.filter((t) => new Date(t.date) >= start);
+  }
+  if (end) {
+    const endOfDay = new Date(end);
+    endOfDay.setHours(23, 59, 59, 999);
+    result = result.filter((t) => new Date(t.date) <= endOfDay);
+  }
 
-    // 4. LEDGER CALCULATION (Accounting Logic)
-    return result.map(t => {
-      const amount = Math.abs(Number(t.amount || 0));
-      
-      // CREDIT: Money received (CR = Cash Receive, BR = Bank Receive)
-      const isCredit = ["CR", "BR"].includes(t.trans_type);
-      
-      // PAID OUT: Money you paid out (CP = Cash Pay, BP = Bank Pay)
-      const isPaidOut = ["CP", "BP"].includes(t.trans_type);
-      
-      // DEBIT: Invoices (money owed to you)
-      const isDebit = t.trans_type === "INVOICE";
+  // 4. LEDGER CALCULATION (Where the actual math happens)
+  return result.map((t) => {
+    const amount = Math.abs(Number(t.amount || 0));
 
-      const received = isCredit ? amount : 0;
-      const paid = isPaidOut ? amount : 0;
+    // CREDIT: Money received (CR = Cash Receive, BR = Bank Receive)
+    const isCredit = ["CR", "BR"].includes(t.trans_type);
 
+    // PAID OUT: Money you paid out (CP = Cash Pay, BP = Bank Pay)
+    const isPaidOut = ["CP", "BP"].includes(t.trans_type);
 
-      return {
-        ...t,
-        received,
-        paid,
-        invoiceAmt: isDebit ? amount : 0,
-        currentBalance: runningBalance,
-      };
-    });
-  }, [transactions, selectedClient, startDate, endDate, jobMap]);
+    // DEBIT: Invoices (money owed to you - usually handled in professional ledger)
+    const isDebit = t.trans_type === "INVOICE";
+
+    const received = isCredit ? amount : 0;
+    const paid = isPaidOut ? amount : 0;
+
+    // ✅ UPDATE RUNNING BALANCE HERE
+    // This ensures the balance grows or shrinks row-by-row
+    runningBalance += (received - paid);
+
+    return {
+      ...t,
+      received,
+      paid,
+      invoiceAmt: isDebit ? amount : 0,
+      currentBalance: runningBalance,
+    };
+  });
+}, [transactions, selectedClient, startDate, endDate, jobMap]);
 
   const totalReceived = reportData.reduce(
   (sum, t) => sum + t.received,
