@@ -117,10 +117,6 @@ export default function Reports() {
     // 1.5 EXCLUDE INVOICE TYPE - These are shadow entries handled separately in the professional ledger
     // Regular cash flow reports should only show actual cash movements (CR, BR, CP, BP)
     result = result.filter(t => t.trans_type !== 'INVOICE');
-    console.log(`🔍 DEBUG: After excluding INVOICE transactions:`, result.length, "transactions");
-
-      return { ...t, resolvedName };
-    });
 
     // 2. APPLY CLIENT FILTER
     if (selectedClient !== "ALL") {
