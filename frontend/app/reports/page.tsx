@@ -4,24 +4,29 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { API_URL } from "../config";
 
-export default function Reports() {
-  const router = useRouter();
-
-  // --- HELPERS ---
-  const getDefaultFromDate = () => {
+// ✅ HELPERS MOVED OUTSIDE: This prevents "Cannot find name" errors
+const getDefaultFromDate = () => {
   const d = new Date();
-  d.setMonth(0); // ✅ January - beginning of year
+  d.setMonth(0); // January
   d.setDate(1);
   return d.toISOString().split("T")[0];
 };
+
+const getToday = () => new Date().toISOString().split("T")[0];
+
+export default function Reports() {
+  const router = useRouter();
 
   // --- STATE ---
   const [transactions, setTransactions] = useState<any[]>([]);
   const [jobMap, setJobMap] = useState<{ [key: number]: string }>({});
   const [clients, setClients] = useState<string[]>([]);
   const [selectedClient, setSelectedClient] = useState("ALL");
+  
+  // ✅ These now have access to the functions above
   const [startDate, setStartDate] = useState(getDefaultFromDate());
   const [endDate, setEndDate] = useState(getToday());
+  
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
