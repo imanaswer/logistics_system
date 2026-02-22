@@ -9,12 +9,11 @@ export default function Reports() {
 
   // --- HELPERS ---
   const getDefaultFromDate = () => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - 1);
-    d.setDate(1);
-    return d.toISOString().split("T")[0];
-  };
-  const getToday = () => new Date().toISOString().split("T")[0];
+  const d = new Date();
+  d.setMonth(0); // ✅ January - beginning of year
+  d.setDate(1);
+  return d.toISOString().split("T")[0];
+};
 
   // --- STATE ---
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -24,6 +23,8 @@ export default function Reports() {
   const [startDate, setStartDate] = useState(getDefaultFromDate());
   const [endDate, setEndDate] = useState(getToday());
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   // --- DATA LOADING ---
   useEffect(() => {
@@ -175,14 +176,26 @@ export default function Reports() {
   }, [transactions, selectedClient, startDate, endDate, jobMap]);
 
   const totalReceived = reportData.reduce(
-    (sum, t) => sum + t.received,
-    0
-  );
-  const totalPaid = reportData.reduce(
-    (sum, t) => sum + t.paid,
-    0
-  );
-  const netBalance = totalReceived - totalPaid;
+  (sum, t) => sum + t.received,
+  0
+);
+const totalPaid = reportData.reduce(
+  (sum, t) => sum + t.paid,
+  0
+);
+const netBalance = totalReceived - totalPaid;
+
+// ✅ NEW: Paginated data
+const paginatedData = reportData.slice(
+  (currentPage - 1) * itemsPerPage,
+  currentPage * itemsPerPage
+);
+const totalPages = Math.ceil(reportData.length / itemsPerPage);
+
+// ✅ NEW: Reset to page 1 when filters change
+useEffect(() => {
+  setCurrentPage(1);
+}, [selectedClient, startDate, endDate]);
 
   if (loading)
     return (
@@ -273,7 +286,35 @@ export default function Reports() {
         </div>
 
         {/* TABLE */}
-        <LedgerTable rows={reportData} />
+        <LedgerTable rows={paginatedData} />
+
+        {/* ✅ NEW: Pagination Controls */}
+        {reportData.length > itemsPerPage && (
+          <div className="bg-white p-4 rounded-2xl border shadow-sm flex items-center justify-between">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 text-sm font-bold bg-slate-100 rounded-lg hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              ← Previous
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-slate-600">
+                Page {currentPage} of {totalPages}
+              </span>
+              <span className="text-xs text-slate-500">
+                ({reportData.length} total transactions)
+              </span>
+            </div>
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+              className="px-4 py-2 text-sm font-bold bg-slate-100 rounded-lg hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              Next →
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
