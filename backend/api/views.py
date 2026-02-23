@@ -254,14 +254,18 @@ def ledger_statement(request):
     transactions = transactions.order_by("date", "id")
 
     # Get jobs with invoices for this client
+# 🔥 FILTER USING INVOICE DATE IF EXISTS ELSE FALLBACK
     jobs_query = Job.objects.filter(client=client, is_invoiced=True)
 
-    # ✅ FILTER USING INVOICE DATE (NOT job_date)
     if start_date:
-        jobs_query = jobs_query.filter(invoice_date__gte=start_date)
-    
+        jobs_query = jobs_query.filter(job_date__gte=start_date)
+
     if end_date:
-        jobs_query = jobs_query.filter(invoice_date__lte=end_date)
+        jobs_query = jobs_query.filter(job_date__lte=end_date)
+    
+    
+
+
 
     
     jobs_with_invoices = jobs_query.prefetch_related('invoice_items')
@@ -298,6 +302,10 @@ def ledger_statement(request):
         ledger_entries.append({
             "id": f"txn_{txn.id}",
             "date": txn.date,
+    
+            "invoice_date": None,
+            "transaction_date": txn.date,
+
             "voucher_no": txn.voucher_no,
             "particulars": f"Job #{txn.job.id} - {txn.description}" if txn.job else txn.description,
             "debit": str(debit),
@@ -330,9 +338,13 @@ def ledger_statement(request):
             # Add invoice as debit entry
             running_balance += job_total
             
+            invoice_created_date = getattr(job, "invoice_date", None) or job.job_date
+
             ledger_entries.append({
                 "id": f"invoice_{job.id}",
-                "date": job.invoice_date or job.job_date,
+                "date": invoice_created_date,
+                "invoice_date": invoice_created_date,
+                "transaction_date": None,
                 "voucher_no": job.invoice_no or f"INV-{job.id}",
                 "particulars": f"Invoice for Job #{job.id}",
                 "debit": str(job_total),
@@ -340,6 +352,7 @@ def ledger_statement(request):
                 "running_balance": str(abs(running_balance)),
                 "balance_type": "Dr" if running_balance >= 0 else "Cr",
             })
+
 
     # Sort all entries by date
     ledger_entries.sort(key=lambda x: x["date"])
