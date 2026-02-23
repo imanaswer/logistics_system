@@ -257,11 +257,20 @@ def ledger_statement(request):
 # 🔥 FILTER USING INVOICE DATE IF EXISTS ELSE FALLBACK
     jobs_query = Job.objects.filter(client=client, is_invoiced=True)
 
+
+    
     if start_date:
-        jobs_query = jobs_query.filter(invoice__date__gte=start_date)
+        jobs_query = jobs_query.filter(
+            Q(invoice__date__gte=start_date) |
+            Q(invoice__date__isnull=True, job_date__gte=start_date)
+        )
     
     if end_date:
-        jobs_query = jobs_query.filter(invoice__date__lte=end_date)
+        jobs_query = jobs_query.filter(
+            Q(invoice__date__lte=end_date) |
+            Q(invoice__date__isnull=True, job_date__lte=end_date)
+        )
+
 
     
     
@@ -284,17 +293,25 @@ def ledger_statement(request):
         if txn.trans_type == "INVOICE":
             debit = txn.amount
             credit = Decimal("0.000")
+            running_balance += txn.amount
+        
         elif txn.trans_type in ["CR", "BR"]:
             debit = Decimal("0.000")
             credit = txn.amount
+            running_balance -= txn.amount
+        
         elif txn.trans_type in ["CP", "BP"]:
             debit = txn.amount
             credit = Decimal("0.000")
+            running_balance += txn.amount
+        
         else:
             debit = Decimal("0.000")
             credit = txn.amount
+            running_balance -= txn.amount
 
 
+        
         ledger_entries.append({
             "id": f"txn_{txn.id}",
             "date": txn.date,
@@ -334,9 +351,11 @@ def ledger_statement(request):
           
             
             invoice_obj = getattr(job, "invoice", None)
-            invoice_created_date = invoice_obj.date if invoice_obj else job.job_date
+            invoice_created_date = getattr(invoice_obj, "date", None) or job.job_date
 
 
+
+            running_balance += job_total
 
             ledger_entries.append({
                 "id": f"invoice_{job.id}",
