@@ -332,7 +332,7 @@ def ledger_statement(request):
             
             ledger_entries.append({
                 "id": f"invoice_{job.id}",
-                "date": job.job_date,
+                "date": job.invoice_date or job.job_date,
                 "voucher_no": job.invoice_no or f"INV-{job.id}",
                 "particulars": f"Invoice for Job #{job.id}",
                 "debit": str(job_total),
