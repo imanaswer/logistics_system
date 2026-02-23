@@ -258,17 +258,19 @@ def ledger_statement(request):
     jobs_query = Job.objects.filter(client=client, is_invoiced=True)
 
     if start_date:
-        jobs_query = jobs_query.filter(job_date__gte=start_date)
-
+        jobs_query = jobs_query.filter(invoice__date__gte=start_date)
+    
     if end_date:
-        jobs_query = jobs_query.filter(job_date__lte=end_date)
+        jobs_query = jobs_query.filter(invoice__date__lte=end_date)
+
     
     
 
 
 
     
-    jobs_with_invoices = jobs_query.prefetch_related('invoice_items')
+    jobs_with_invoices = jobs_query.select_related('invoice').prefetch_related('invoice_items')
+
 
     # Build combined ledger entries
     running_balance = Decimal("0.000")
@@ -335,10 +337,12 @@ def ledger_statement(request):
             invoice_total_vat += job_vat
             invoice_total_invoice += job_total
             
-            # Add invoice as debit entry
-            running_balance += job_total
+          
             
-            invoice_created_date = getattr(job, "invoice_date", None) or job.job_date
+            invoice_obj = getattr(job, "invoice", None)
+            invoice_created_date = invoice_obj.date if invoice_obj else job.job_date
+
+
 
             ledger_entries.append({
                 "id": f"invoice_{job.id}",
