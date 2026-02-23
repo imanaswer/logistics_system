@@ -255,10 +255,14 @@ def ledger_statement(request):
 
     # Get jobs with invoices for this client
     jobs_query = Job.objects.filter(client=client, is_invoiced=True)
+
+    # ✅ FILTER USING INVOICE DATE (NOT job_date)
     if start_date:
-        jobs_query = jobs_query.filter(job_date__gte=start_date)
+        jobs_query = jobs_query.filter(invoice_date__gte=start_date)
+    
     if end_date:
-        jobs_query = jobs_query.filter(job_date__lte=end_date)
+        jobs_query = jobs_query.filter(invoice_date__lte=end_date)
+
     
     jobs_with_invoices = jobs_query.prefetch_related('invoice_items')
 
