@@ -282,24 +282,18 @@ def ledger_statement(request):
     # Add regular transactions
     for txn in transactions:
         if txn.trans_type == "INVOICE":
-            # Invoice raised → client owes us → Debit
             debit = txn.amount
             credit = Decimal("0.000")
-            running_balance += txn.amount
         elif txn.trans_type in ["CR", "BR"]:
-            # Cash/Bank Receive → client paid us → Credit
             debit = Decimal("0.000")
             credit = txn.amount
-            running_balance -= txn.amount
         elif txn.trans_type in ["CP", "BP"]:
-            # Cash/Bank Payment → money paid out → Debit
             debit = txn.amount
             credit = Decimal("0.000")
-            running_balance += txn.amount
         else:
             debit = Decimal("0.000")
             credit = txn.amount
-            running_balance -= txn.amount
+
 
         ledger_entries.append({
             "id": f"txn_{txn.id}",
