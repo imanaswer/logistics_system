@@ -1,58 +1,59 @@
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from .models import Job, Transaction, InvoiceItem
+from .models import Invoice, Transaction, InvoiceItem
 
 
-@receiver(post_save, sender=Job)
-def create_or_update_invoice_shadow(sender, instance, **kwargs):
+@receiver(post_save, sender=Invoice)
+def create_or_update_invoice_transaction(sender, instance, created, **kwargs):
+    """
+    Create or update INVOICE transaction whenever an Invoice is created.
+    """
 
-    if not instance.is_invoiced:
-        Transaction.objects.filter(
-            job=instance,
-            trans_type="INVOICE"
-        ).delete()
-        return
-
-    total_amount = instance.get_total_amount()
+    job = instance.job
+    total_amount = job.get_total_amount()
 
     if total_amount <= 0:
         return
 
-    shadow, created = Transaction.objects.get_or_create(
-        job=instance,
+    transaction, tx_created = Transaction.objects.get_or_create(
+        job=job,
         trans_type="INVOICE",
         defaults={
             "amount": total_amount,
-            "description": f"Invoice for Job #{instance.id}",
-            "date": instance.job_date,
-            "client": instance.client,
-            "party_name": instance.client.name if instance.client else ""
+            "description": f"Job #{job.id} - Invoiced Charges",
+            "date": instance.date,
+            "client": job.client,
+            "party_name": job.client.name if job.client else ""
         }
     )
 
-    if not created:
-        shadow.amount = total_amount
-        shadow.date = instance.job_date
-        shadow.client = instance.client
-        shadow.party_name = instance.client.name if instance.client else ""
-        shadow.save()
+    if not tx_created:
+        transaction.amount = total_amount
+        transaction.date = instance.date
+        transaction.client = job.client
+        transaction.party_name = job.client.name if job.client else ""
+        transaction.save()
 
 
 @receiver([post_save, post_delete], sender=InvoiceItem)
-def update_invoice_shadow_on_item_change(sender, instance, **kwargs):
+def update_invoice_transaction_on_item_change(sender, instance, **kwargs):
+    """
+    Update transaction if invoice items change.
+    """
 
     job = instance.job
 
-    if not job.is_invoiced:
+    invoice = getattr(job, "invoice", None)
+    if not invoice:
         return
 
     total_amount = job.get_total_amount()
 
-    shadow = Transaction.objects.filter(
+    transaction = Transaction.objects.filter(
         job=job,
         trans_type="INVOICE"
     ).first()
 
-    if shadow:
-        shadow.amount = total_amount
-        shadow.save()
+    if transaction:
+        transaction.amount = total_amount
+        transaction.save()
