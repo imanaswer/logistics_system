@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'corsheaders',
 
     # Your App
+    "api.apps.ApiConfig",
     'api',
 ]
 
