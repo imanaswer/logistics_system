@@ -244,8 +244,7 @@ def ledger_statement(request):
 
         ledger_entries.append({
             "id": txn.id,
-            "date": txn.date,
-            "date": txn.date.strftime("%d/%m/%Y"),
+            "date": txn.date.strftime("%d/%m/%Y") if txn.date else None,
             "voucher_no": txn.voucher_no,
             "particulars": txn.description,
             "debit": str(debit),
