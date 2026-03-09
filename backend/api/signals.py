@@ -1,59 +1,48 @@
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
-from .models import Invoice, Transaction, InvoiceItem
+from .models import InvoiceItem, Transaction
 
 
-@receiver(post_save, sender=Invoice)
-def create_or_update_invoice_transaction(sender, instance, created, **kwargs):
+def update_invoice_transaction(job):
     """
-    Create or update INVOICE transaction whenever an Invoice is created.
+    Ensures a single INVOICE transaction exists per job
+    and keeps it synced with invoice item totals.
     """
 
-    job = instance.job
     total_amount = job.get_total_amount()
 
+    # If no charges exist → delete transaction
     if total_amount <= 0:
+        Transaction.objects.filter(
+            job=job,
+            trans_type="INVOICE"
+        ).delete()
         return
 
-    transaction, tx_created = Transaction.objects.get_or_create(
+    transaction, created = Transaction.objects.get_or_create(
         job=job,
         trans_type="INVOICE",
         defaults={
             "amount": total_amount,
             "description": f"Job #{job.id} - Invoiced Charges",
-            "date": instance.date,
+            "date": job.job_date,
             "client": job.client,
             "party_name": job.client.name if job.client else ""
         }
     )
 
-    if not tx_created:
+    if not created:
         transaction.amount = total_amount
-        transaction.date = instance.date
         transaction.client = job.client
         transaction.party_name = job.client.name if job.client else ""
         transaction.save()
 
 
-@receiver([post_save, post_delete], sender=InvoiceItem)
-def update_invoice_transaction_on_item_change(sender, instance, **kwargs):
-    """
-    Update transaction if invoice items change.
-    """
+@receiver(post_save, sender=InvoiceItem)
+def invoice_item_saved(sender, instance, **kwargs):
+    update_invoice_transaction(instance.job)
 
-    job = instance.job
 
-    invoice = getattr(job, "invoice", None)
-    if not invoice:
-        return
-
-    total_amount = job.get_total_amount()
-
-    transaction = Transaction.objects.filter(
-        job=job,
-        trans_type="INVOICE"
-    ).first()
-
-    if transaction:
-        transaction.amount = total_amount
-        transaction.save()
+@receiver(post_delete, sender=InvoiceItem)
+def invoice_item_deleted(sender, instance, **kwargs):
+    update_invoice_transaction(instance.job)
