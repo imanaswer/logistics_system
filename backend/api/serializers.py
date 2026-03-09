@@ -81,6 +81,10 @@ class InvoiceItemSerializer(serializers.ModelSerializer):
 
 # 4. Transaction Serializer
 class TransactionSerializer(serializers.ModelSerializer):
+    date = serializers.DateField(
+    format="%d/%m/%Y",
+    input_formats=["%Y-%m-%d", "%d/%m/%Y"]
+    )
     job = serializers.PrimaryKeyRelatedField(
         queryset=Job.objects.all(),
         required=False,
