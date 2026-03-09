@@ -88,6 +88,42 @@ class ChargeTypeViewSet(viewsets.ModelViewSet):
     serializer_class = ChargeTypeSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+# ─────────────────────────────────────────────────────────────────────────────
+# INVOICE TRANSACTION SYNC
+# Called directly from InvoiceItemViewSet so an INVOICE debit is
+# created/updated the moment the frontend saves line items.
+# This bypasses the broken signal chain entirely.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _sync_invoice_transaction(job):
+    from django.utils import timezone
+
+    total_amount = job.get_total_amount()
+
+    if total_amount <= 0:
+        # All items removed — wipe the debit from the ledger
+        Transaction.objects.filter(job=job, trans_type="INVOICE").delete()
+        return
+
+    transaction, created = Transaction.objects.get_or_create(
+        job=job,
+        trans_type="INVOICE",
+        defaults={
+            "amount": total_amount,
+            "description": f"Job #{job.id} - Invoiced Charges",
+            "date": timezone.now().date(),
+            "client": job.client,
+            "party_name": job.client.name if job.client else "",
+        },
+    )
+
+    if not created:
+        transaction.amount = total_amount
+        transaction.client = job.client
+        transaction.party_name = job.client.name if job.client else ""
+        transaction.save()
+
+
 # --- 6. STANDARD LISTS ---
 
 class InvoiceItemViewSet(viewsets.ModelViewSet):
@@ -119,6 +155,19 @@ class InvoiceItemViewSet(viewsets.ModelViewSet):
             return qs.none()
 
         return qs.filter(job_id=job_id)
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        _sync_invoice_transaction(instance.job)   # ✅ new item → create/update debit
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        _sync_invoice_transaction(instance.job)   # ✅ edited item → update debit amount
+
+    def perform_destroy(self, instance):
+        job = instance.job
+        instance.delete()
+        _sync_invoice_transaction(job)            # ✅ deleted item → recalculate debit
 
 
 
@@ -244,7 +293,7 @@ def ledger_statement(request):
 
         ledger_entries.append({
             "id": txn.id,
-            "date": txn.date.isoformat() if txn.date else None,  # ✅ YYYY-MM-DD — safe for JS new Date()
+            "date": txn.date.isoformat() if txn.date else None,  # ✅ YYYY-MM-DD — JS new Date() safe
             "voucher_no": txn.voucher_no,
             "particulars": txn.description,
             "debit": str(debit),
