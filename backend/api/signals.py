@@ -3,17 +3,28 @@ from django.dispatch import receiver
 from django.utils import timezone
 from .models import Job, Transaction, InvoiceItem
 
-# ❌ REMOVED: Invoice post_save signal — Invoice rows are never created in this
-# project (api_invoice table = 0 rows), so that signal never fired.
-# ✅ FIX: Hook into Job.is_invoiced instead. The UI sets this flag when
-# generating an invoice from Job + InvoiceItems, so this always fires correctly.
+# ─────────────────────────────────────────────────────────────────────────────
+# WHY THE ORIGINAL SIGNALS WERE BROKEN
+#
+# BUG 1: @receiver(post_save, sender=Invoice)
+#   Invoice rows are NEVER created in this project (api_invoice = 0 rows).
+#   The UI builds invoices from Job + InvoiceItems directly, so this signal
+#   never fired → no ledger transaction was ever auto-created.
+#
+# BUG 2: update_invoice_transaction_on_item_change used:
+#       invoice = getattr(job, "invoice", None)
+#       if not invoice: return      ← always None → always returned early
+#
+# FIX: Hook into Job.is_invoiced (what the UI actually sets) and replace the
+#      broken invoice-existence guard with job.is_invoiced.
+# ─────────────────────────────────────────────────────────────────────────────
 
 
 @receiver(post_save, sender=Job)
 def create_invoice_transaction_on_job_invoiced(sender, instance, **kwargs):
     """
     When a Job is marked is_invoiced=True, create (or update) an INVOICE
-    transaction in the ledger.
+    transaction so the debit appears in the ledger automatically.
 
     Replaces the broken @receiver(post_save, sender=Invoice) which never fired
     because Invoice objects are never saved in this project.
@@ -38,7 +49,7 @@ def create_invoice_transaction_on_job_invoiced(sender, instance, **kwargs):
     )
 
     if not tx_created:
-        # Job was already invoiced — keep amount in sync
+        # Already invoiced before — keep in sync
         transaction.amount = total_amount
         transaction.client = instance.client
         transaction.party_name = instance.client.name if instance.client else ""
@@ -48,19 +59,17 @@ def create_invoice_transaction_on_job_invoiced(sender, instance, **kwargs):
 @receiver([post_save, post_delete], sender=InvoiceItem)
 def update_invoice_transaction_on_item_change(sender, instance, **kwargs):
     """
-    When InvoiceItems are added / edited / deleted, keep the INVOICE transaction
-    amount in sync — but only if the job has already been invoiced.
+    When InvoiceItems are added / edited / deleted on an already-invoiced job,
+    keep the INVOICE transaction amount in sync.
 
-    Previously this checked `getattr(job, 'invoice', None)` which was always
-    None (Invoice table is empty), causing an early return every single time.
-    ✅ FIX: Check job.is_invoiced instead.
+    BUG FIX: was getattr(job, 'invoice', None) — always None since Invoice
+    table is empty — causing an early return every single time.
     """
     job = instance.job
 
-    # ❌ OLD (broken): if not getattr(job, "invoice", None): return
-    # ✅ NEW: check the flag that the UI actually sets
+    # ✅ FIX: check the flag the UI actually sets, not the empty Invoice table
     if not job.is_invoiced:
-        return  # Invoice not generated yet — nothing to update
+        return
 
     total_amount = job.get_total_amount()
 
