@@ -38,9 +38,40 @@ interface LedgerData {
   final_balance_type: "Dr" | "Cr";
 }
 
+// Format date as DD/MM/YYYY
+function fmt(date: string) {
+  if (!date) return "";
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return date;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+// Shared inline styles — keeps print rendering identical to screen
+const th: React.CSSProperties = {
+  border: "1px solid #888",
+  padding: "4px 6px",
+  fontWeight: "800",
+  fontSize: "10px",
+  textAlign: "center",
+  background: "#d8d8d8",
+};
+
+const td: React.CSSProperties = {
+  border: "1px solid #bbb",
+  padding: "3px 6px",
+  fontSize: "10px",
+};
+
 export default function LedgerStatementWrapper() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-100 flex items-center justify-center font-bold text-slate-400">Loading...</div>}>
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center font-bold text-slate-400">
+        Loading...
+      </div>
+    }>
       <LedgerStatement />
     </Suspense>
   );
@@ -55,359 +86,286 @@ function LedgerStatement() {
   const [selectedClientId, setSelectedClientId] = useState<number | null>(
     preSelectedClientId ? Number(preSelectedClientId) : null
   );
-
-  // Fix 1: Default date range to start of current year
   const currentYear = new Date().getFullYear();
   const [startDate, setStartDate] = useState(`${currentYear}-01-01`);
   const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0]);
-
   const [ledgerData, setLedgerData] = useState<LedgerData | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPrintView, setShowPrintView] = useState(false);
 
+  // Capture print time once when report is generated
+  const [printMeta, setPrintMeta] = useState({ date: "", time: "" });
+
   useEffect(() => {
     const fetchClients = async () => {
       const token = localStorage.getItem("token");
-      if (!token) {
-        router.push("/login");
-        return;
-      }
-
+      if (!token) { router.push("/login"); return; }
       try {
         const config = { headers: { Authorization: `Token ${token}` } };
-        const clientsRes = await axios.get(`${API_URL}/api/clients/`, config);
-        setClients(clientsRes.data);
-        
-        // Auto-fetch ledger if clientId is pre-selected from URL
+        const res = await axios.get(`${API_URL}/api/clients/`, config);
+        setClients(res.data);
+
         if (preSelectedClientId) {
           const clientId = Number(preSelectedClientId);
           setSelectedClientId(clientId);
-          // Auto-trigger ledger fetch
           setLoading(true);
           try {
-            const ledgerConfig = {
+            const r = await axios.get(`${API_URL}/api/reports/ledger/`, {
               headers: { Authorization: `Token ${token}` },
               params: {
                 client_id: clientId,
                 start_date: `${new Date().getFullYear()}-01-01`,
-                end_date: new Date().toISOString().split("T")[0]
-              }
-            };
-            const res = await axios.get(`${API_URL}/api/reports/ledger/`, ledgerConfig);
-            setLedgerData(res.data);
+                end_date: new Date().toISOString().split("T")[0],
+              },
+            });
+            setLedgerData(r.data);
             setShowPrintView(true);
-          } catch (err: any) {
-            console.error("Failed to auto-fetch ledger:", err);
-          } finally {
-            setLoading(false);
-          }
+            captureMeta();
+          } catch (e) { console.error(e); }
+          finally { setLoading(false); }
         }
-      } catch (err) {
-        console.error("Failed to fetch clients:", err);
-        alert("Failed to load clients");
-      }
+      } catch { alert("Failed to load clients"); }
     };
-
     fetchClients();
   }, [router, preSelectedClientId]);
 
-  const fetchLedger = async () => {
-    if (!selectedClientId) {
-      alert("Please select a client");
-      return;
-    }
+  const captureMeta = () => {
+    const n = new Date();
+    setPrintMeta({
+      date: fmt(n.toISOString().split("T")[0]),
+      time: n.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) + (n.getHours() < 12 ? "AM" : "PM"),
+    });
+  };
 
+  const fetchLedger = async () => {
+    if (!selectedClientId) { alert("Please select a client"); return; }
     setLoading(true);
     const token = localStorage.getItem("token");
-
     try {
-      const config = { 
+      const res = await axios.get(`${API_URL}/api/reports/ledger/`, {
         headers: { Authorization: `Token ${token}` },
         params: {
           client_id: selectedClientId,
           ...(startDate && { start_date: startDate }),
-          ...(endDate && { end_date: endDate })
-        }
-      };
-
-      const res = await axios.get(`${API_URL}/api/reports/ledger/`, config);
+          ...(endDate && { end_date: endDate }),
+        },
+      });
       setLedgerData(res.data);
       setShowPrintView(true);
+      captureMeta();
     } catch (err: any) {
-      console.error("Failed to fetch ledger:", err);
       alert(err.response?.data?.error || "Failed to generate ledger statement");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePrint = () => {
-    window.print();
+    } finally { setLoading(false); }
   };
 
   return (
     <div className="min-h-screen bg-slate-100 p-6">
+
       {!showPrintView ? (
-        // Filter Form
+        // ── Filter form ────────────────────────────────────────────────────
         <div className="max-w-4xl mx-auto">
-          <button
-            onClick={() => router.push("/")}
-            className="mb-6 bg-white px-4 py-2 rounded-lg border shadow hover:bg-slate-50"
-          >
+          <button onClick={() => router.push("/")}
+            className="mb-6 bg-white px-4 py-2 rounded-lg border shadow hover:bg-slate-50 text-sm font-semibold">
             ← Back to Dashboard
           </button>
-
           <div className="bg-white p-8 rounded-2xl border shadow-sm space-y-6">
             <div>
-              <h1 className="text-2xl font-black text-black">
-                Client Ledger Statement
-              </h1>
-              <p className="text-sm text-slate-700">
-                Generate professional ledger statement with running balance
-              </p>
+              <h1 className="text-2xl font-black text-black">Client Ledger Statement</h1>
+              <p className="text-sm text-slate-500">Generate a professional Statement of Accounts</p>
             </div>
-
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-black block mb-2">
-                  Select Client *
-                </label>
-                <select
-                  value={selectedClientId || ""}
-                  onChange={(e) => setSelectedClientId(Number(e.target.value))}
+                <label className="text-xs font-bold text-black block mb-2">Select Client *</label>
+                <select value={selectedClientId || ""} onChange={(e) => setSelectedClientId(Number(e.target.value))}
                   className="w-full p-3 border rounded-lg font-bold text-black focus:outline-none focus:ring-2 focus:ring-slate-300"
-                  data-testid="client-select"
-                >
+                  data-testid="client-select">
                   <option value="">-- Select a Client --</option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
+                  {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-bold text-black block mb-2">
-                    Start Date (Optional)
-                  </label>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full p-3 border rounded-lg font-bold text-black"
-                    data-testid="start-date-input"
-                  />
+                  <label className="text-xs font-bold text-black block mb-2">Start Date</label>
+                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full p-3 border rounded-lg font-bold text-black" data-testid="start-date-input" />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-black block mb-2">
-                    End Date (Optional)
-                  </label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full p-3 border rounded-lg font-bold text-black"
-                    data-testid="end-date-input"
-                  />
+                  <label className="text-xs font-bold text-black block mb-2">End Date</label>
+                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full p-3 border rounded-lg font-bold text-black" data-testid="end-date-input" />
                 </div>
               </div>
             </div>
-
-            <button
-              onClick={fetchLedger}
-              disabled={loading || !selectedClientId}
+            <button onClick={fetchLedger} disabled={loading || !selectedClientId}
               className="w-full py-4 bg-black text-white font-bold rounded-xl hover:opacity-90 transition disabled:opacity-50"
-              data-testid="generate-ledger-button"
-            >
-              {loading ? "Generating..." : "Generate Ledger Statement"}
+              data-testid="generate-ledger-button">
+              {loading ? "Generating..." : "Generate Statement of Accounts"}
             </button>
           </div>
         </div>
+
       ) : (
-        // Ledger Report View
-        <div className="max-w-7xl mx-auto">
-          <div className="no-print mb-6 flex gap-4">
-            <button
-              onClick={() => setShowPrintView(false)}
-              className="bg-white px-4 py-2 rounded-lg border shadow hover:bg-slate-50"
-            >
+        // ── Statement view ─────────────────────────────────────────────────
+        <div className="max-w-3xl mx-auto">
+
+          {/* Screen-only buttons */}
+          <div className="no-print mb-4 flex gap-3">
+            <button onClick={() => setShowPrintView(false)}
+              className="bg-white px-4 py-2 rounded-lg border shadow hover:bg-slate-50 text-sm font-semibold">
               ← Back to Filters
             </button>
-            <button
-              onClick={handlePrint}
-              className="bg-black text-white px-6 py-2 rounded-lg shadow hover:opacity-90"
-              data-testid="print-button"
-            >
+            <button onClick={() => window.print()}
+              className="bg-black text-white px-6 py-2 rounded-lg shadow hover:opacity-90 text-sm font-semibold"
+              data-testid="print-button">
               🖨️ Print / Save as PDF
             </button>
           </div>
 
           {ledgerData && (
-            <div className="bg-white p-12 rounded-2xl border shadow-lg print:shadow-none print:border-0">
-              {/* Header */}
-              <div className="border-b-2 border-slate-300 pb-6 mb-6">
-                <h1 className="text-3xl font-black text-center text-black">
-                  LEDGER STATEMENT
-                </h1>
-                <p className="text-center text-sm text-slate-600 mt-2">
-                  Professional Client Reconciliation Report
-                </p>
+            <div id="print-area" style={{ background: "#fff", padding: "20px 24px", fontFamily: "Arial, sans-serif" }}>
+
+              {/* ── Company letterhead ── */}
+              <div style={{ textAlign: "center", borderBottom: "2px solid #000", paddingBottom: "8px", marginBottom: "8px" }}>
+                <div style={{ fontSize: "16px", fontWeight: "900", letterSpacing: "0.5px", textTransform: "uppercase" }}>
+                  SPEED INTERNATIONAL BUSINESS LLC
+                </div>
+                <div style={{ fontSize: "10px", marginTop: "2px" }}>P.O BOX:1432 , P.C: 114 , JIBROO</div>
+                <div style={{ fontSize: "10px" }}>MUSCAT, SULTANATE OF OMAN</div>
+                <div style={{ fontSize: "10px" }}>GSM: 96440813</div>
+                <div style={{ fontSize: "10px" }}>E MAIL: speedinternationalshipping@gmail.com</div>
               </div>
 
-              {/* Client Info */}
-              <div className="grid grid-cols-2 gap-6 mb-8">
+              {/* ── Statement meta row ── */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
                 <div>
-                  <p className="text-xs text-slate-500 font-semibold">CLIENT NAME</p>
-                  <p className="text-lg font-bold text-black">{ledgerData.client.name}</p>
+                  <div style={{ fontSize: "12px", fontWeight: "900", textTransform: "uppercase" }}>
+                    STATEMENT OF ACCOUNTS
+                  </div>
+                  <div style={{ fontSize: "10px", marginTop: "2px" }}>
+                    FOR THE PERIOD &nbsp;
+                    <strong>{fmt(startDate)}</strong> &nbsp;To&nbsp; <strong>{fmt(endDate)}</strong>
+                  </div>
+                  <div style={{ fontSize: "10px", fontWeight: "800", marginTop: "4px" }}>
+                    ACCOUNT &nbsp;&nbsp; {ledgerData.client.name}
+                  </div>
+                  {ledgerData.client.address && (
+                    <div style={{ fontSize: "9px", color: "#555", marginTop: "1px" }}>
+                      {ledgerData.client.address}
+                    </div>
+                  )}
+                  {ledgerData.client.vat_number && (
+                    <div style={{ fontSize: "9px", color: "#555" }}>
+                      VAT: {ledgerData.client.vat_number}
+                    </div>
+                  )}
                 </div>
-                {ledgerData.client.address && (
-                  <div>
-                    <p className="text-xs text-slate-500 font-semibold">ADDRESS</p>
-                    <p className="text-sm text-black">{ledgerData.client.address}</p>
-                  </div>
-                )}
-                {ledgerData.client.vat_number && (
-                  <div>
-                    <p className="text-xs text-slate-500 font-semibold">VAT NUMBER</p>
-                    <p className="text-sm text-black">{ledgerData.client.vat_number}</p>
-                  </div>
-                )}
-                <div>
-                  <p className="text-xs text-slate-500 font-semibold">STATEMENT DATE</p>
-                  <p className="text-sm text-black">{new Date().toLocaleDateString()}</p>
+                <div style={{ textAlign: "right", fontSize: "10px", lineHeight: "1.6" }}>
+                  <div>Date: &nbsp; {printMeta.date}</div>
+                  <div>Time: &nbsp; {printMeta.time}</div>
+                  <div>By: &nbsp;&nbsp;&nbsp; ADMIN</div>
                 </div>
               </div>
 
-              {/* Ledger Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse" data-testid="ledger-table">
-                  <thead>
-                    <tr className="bg-slate-100">
-                      <th className="border border-slate-300 px-4 py-3 text-left text-xs font-bold text-black">
-                        DATE
-                      </th>
-                      <th className="border border-slate-300 px-4 py-3 text-left text-xs font-bold text-black">
-                        VOUCHER NO
-                      </th>
-                      <th className="border border-slate-300 px-4 py-3 text-left text-xs font-bold text-black">
-                        PARTICULARS
-                      </th>
-                      <th className="border border-slate-300 px-4 py-3 text-right text-xs font-bold text-black">
-                        DEBIT
-                      </th>
-                      <th className="border border-slate-300 px-4 py-3 text-right text-xs font-bold text-black">
-                        CREDIT
-                      </th>
-                      <th className="border border-slate-300 px-4 py-3 text-right text-xs font-bold text-black">
-                        BALANCE
-                      </th>
+              {/* ── Ledger table ── */}
+              <table data-testid="ledger-table"
+                style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px" }}>
+                <thead>
+                  <tr>
+                    <th style={{ ...th, width: "9%" }}>Date</th>
+                    <th style={{ ...th, width: "10%" }}>Voucher No</th>
+                    <th style={{ ...th, textAlign: "left", width: "47%" }}>Particulars / Narration</th>
+                    <th style={{ ...th, textAlign: "right", width: "11%" }}>Debit</th>
+                    <th style={{ ...th, textAlign: "right", width: "11%" }}>Credit</th>
+                    <th style={{ ...th, textAlign: "right", width: "12%" }}>Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Opening balance row */}
+                  <tr style={{ background: "#f5f5f5" }}>
+                    <td style={td}></td>
+                    <td style={td}></td>
+                    <td style={{ ...td, fontWeight: "700" }}>Balance B/d</td>
+                    <td style={{ ...td, textAlign: "right" }}></td>
+                    <td style={{ ...td, textAlign: "right" }}></td>
+                    <td style={{ ...td, textAlign: "right", fontWeight: "700" }}>0.000</td>
+                  </tr>
+
+                  {ledgerData.entries.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ ...td, textAlign: "center", color: "#888", fontStyle: "italic", padding: "14px" }}>
+                        No transactions found for this period
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {ledgerData.entries.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="border border-slate-300 px-4 py-8 text-center text-slate-500 italic">
-                          No transactions found for this client
+                  ) : (
+                    ledgerData.entries.map((entry, idx) => (
+                      <tr key={entry.id} style={{ background: idx % 2 === 0 ? "#fff" : "#f9f9f9" }}>
+                        <td style={td}>{fmt(entry.date)}</td>
+                        <td style={{ ...td, fontFamily: "monospace", textAlign: "center" }}>
+                          {entry.voucher_no || ""}
+                        </td>
+                        <td style={{ ...td, textAlign: "left" }}>{entry.particulars}</td>
+                        <td style={{ ...td, textAlign: "right" }}>
+                          {Number(entry.debit) > 0 ? Number(entry.debit).toFixed(3) : ""}
+                        </td>
+                        <td style={{ ...td, textAlign: "right" }}>
+                          {Number(entry.credit) > 0 ? Number(entry.credit).toFixed(3) : ""}
+                        </td>
+                        <td style={{ ...td, textAlign: "right", fontWeight: "600" }}>
+                          {Number(entry.running_balance).toFixed(3)}&nbsp;{entry.balance_type}
                         </td>
                       </tr>
-                    ) : (
-                      ledgerData.entries.map((entry, idx) => (
-                        <tr 
-                          key={entry.id} 
-                          className={idx % 2 === 0 ? "bg-white" : "bg-slate-50"}
-                        >
-                          <td className="border border-slate-300 px-4 py-3 text-sm text-black">
-                            {new Date(entry.date).toLocaleDateString()}
-                          </td>
-                          <td className="border border-slate-300 px-4 py-3 text-sm text-black font-mono">
-                            {entry.voucher_no}
-                          </td>
-                          <td className="border border-slate-300 px-4 py-3 text-sm text-black">
-                            {entry.particulars}
-                          </td>
-                          <td className="border border-slate-300 px-4 py-3 text-sm text-right text-black font-semibold">
-                            {Number(entry.debit) > 0 ? Number(entry.debit).toFixed(3) : "-"}
-                          </td>
-                          <td className="border border-slate-300 px-4 py-3 text-sm text-right text-black font-semibold">
-                            {Number(entry.credit) > 0 ? Number(entry.credit).toFixed(3) : "-"}
-                          </td>
-                          <td className="border border-slate-300 px-4 py-3 text-sm text-right text-black font-bold">
-                            {entry.running_balance} {entry.balance_type}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-slate-100 font-semibold">
-                      <td colSpan={3} className="border border-slate-300 px-4 py-3 text-right text-xs font-bold text-black uppercase">
-                        TOTALS:
-                      </td>
-                      <td className="border border-slate-300 px-4 py-3 text-right text-sm font-bold text-green-700" data-testid="total-debit">
-                        {Number(ledgerData.total_debit).toFixed(3)}
-                      </td>
-                      <td className="border border-slate-300 px-4 py-3 text-right text-sm font-bold text-red-700" data-testid="total-credit">
-                        {Number(ledgerData.total_credit).toFixed(3)}
-                      </td>
-                      <td className="border border-slate-300 px-4 py-3 text-right text-sm font-bold text-black">
-                        {ledgerData.net_balance && `Net: ${Number(ledgerData.net_balance).toFixed(3)}`}
-                      </td>
-                    </tr>
-                    {Number(ledgerData.invoice_totals?.total_invoice) > 0 && (
-                      <tr className="bg-blue-50">
-                        <td colSpan={3} className="border border-slate-300 px-4 py-3 text-right text-xs font-bold text-blue-800 uppercase">
-                          INVOICE TOTALS:
-                        </td>
-                        <td className="border border-slate-300 px-4 py-3 text-right text-sm font-bold text-blue-700" data-testid="invoice-amount">
-                          Amt: {Number(ledgerData.invoice_totals.total_amount).toFixed(3)}
-                        </td>
-                        <td className="border border-slate-300 px-4 py-3 text-right text-sm font-bold text-blue-700" data-testid="invoice-vat">
-                          VAT: {Number(ledgerData.invoice_totals.total_vat).toFixed(3)}
-                        </td>
-                        <td className="border border-slate-300 px-4 py-3 text-right text-sm font-black text-blue-800" data-testid="invoice-total">
-                          Total: {Number(ledgerData.invoice_totals.total_invoice).toFixed(3)}
-                        </td>
-                      </tr>
-                    )}
-                    <tr className="bg-slate-200">
-                      <td colSpan={5} className="border border-slate-300 px-4 py-4 text-right text-sm font-bold text-black">
-                        FINAL BALANCE:
-                      </td>
-                      <td className="border border-slate-300 px-4 py-4 text-right text-lg font-black text-black" data-testid="final-balance">
-                        {ledgerData.final_balance} {ledgerData.final_balance_type}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
+                    ))
+                  )}
+
+                  {/* Totals */}
+                  <tr style={{ background: "#e0e0e0", borderTop: "2px solid #555" }}>
+                    <td colSpan={3} style={{ ...td, textAlign: "right", fontWeight: "900", fontSize: "10px" }}>
+                      TOTALS
+                    </td>
+                    <td style={{ ...td, textAlign: "right", fontWeight: "800" }} data-testid="total-debit">
+                      {Number(ledgerData.total_debit).toFixed(3)}
+                    </td>
+                    <td style={{ ...td, textAlign: "right", fontWeight: "800" }} data-testid="total-credit">
+                      {Number(ledgerData.total_credit).toFixed(3)}
+                    </td>
+                    <td style={td}></td>
+                  </tr>
+
+                  {/* Closing balance */}
+                  <tr style={{ background: "#c8c8c8", borderTop: "1px solid #555" }}>
+                    <td colSpan={5} style={{ ...td, textAlign: "right", fontWeight: "900", fontSize: "10px" }}>
+                      CLOSING BALANCE
+                    </td>
+                    <td style={{ ...td, textAlign: "right", fontWeight: "900", fontSize: "11px" }} data-testid="final-balance">
+                      {Number(ledgerData.final_balance).toFixed(3)}&nbsp;{ledgerData.final_balance_type}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              {/* ── Footer ── */}
+              <div style={{
+                marginTop: "20px", borderTop: "1px solid #ccc", paddingTop: "6px",
+                textAlign: "center", fontSize: "9px", color: "#777"
+              }}>
+                <div>This is a computer-generated statement and does not require a signature.</div>
+                <div>For any queries, please contact our accounts department.</div>
               </div>
 
-              {/* Footer */}
-              <div className="mt-12 pt-6 border-t border-slate-300">
-                <p className="text-xs text-slate-500 text-center">
-                  This is a computer-generated statement and does not require a signature.
-                </p>
-                <p className="text-xs text-slate-500 text-center mt-1">
-                  For any queries, please contact our accounts department.
-                </p>
-              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Print Styles */}
+      {/* Print styles — force A4, hide UI chrome */}
       <style jsx global>{`
         @media print {
-          .no-print {
-            display: none !important;
-          }
-          body {
-            background: white !important;
-          }
+          .no-print { display: none !important; }
+          body { background: white !important; }
+          #print-area { padding: 0 !important; }
           @page {
-            margin: 2cm;
+            size: A4 portrait;
+            margin: 1cm 1.5cm;
           }
         }
       `}</style>
