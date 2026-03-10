@@ -41,6 +41,14 @@ export default function Transactions() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  // ── Edit modal state ──────────────────────────────────────────────────────
+  const [editingTxn, setEditingTxn] = useState<any | null>(null);
+  const [editAmount, setEditAmount] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editType, setEditType] = useState<"CR"|"CP"|"BR"|"BP">("CR");
+  const [editLoading, setEditLoading] = useState(false);
+
   useEffect(() => {
     const init = async () => {
       const token = localStorage.getItem("token");
@@ -190,6 +198,42 @@ export default function Transactions() {
       alert("✅ Transaction deleted");
     } catch {
       alert("Delete failed");
+    }
+  };
+
+  // ── Edit handlers ─────────────────────────────────────────────────────────
+  const openEdit = (txn: any) => {
+    setEditingTxn(txn);
+    setEditAmount(String(txn.amount));
+    setEditDate(txn.date);
+    setEditDescription(txn.description || "");
+    setEditType(txn.trans_type);
+  };
+
+  const handleEditSave = async () => {
+    if (!editAmount || !editDate) {
+      alert("Amount and date are required");
+      return;
+    }
+    setEditLoading(true);
+    const token = localStorage.getItem("token");
+    try {
+      const res = await axios.patch(
+        `${API_URL}/api/transactions/${editingTxn.id}/`,
+        {
+          amount: Number(editAmount),
+          date: editDate,
+          description: editDescription,
+          trans_type: editType,
+        },
+        { headers: { Authorization: `Token ${token}` } }
+      );
+      setHistory((h) => h.map((t) => (t.id === editingTxn.id ? res.data : t)));
+      setEditingTxn(null);
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Failed to update transaction");
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -450,6 +494,14 @@ export default function Transactions() {
                   {Number(t.amount).toFixed(3)}
                 </span>
                 <button
+                  onClick={() => openEdit(t)}
+                  className="text-slate-400 hover:text-blue-600 text-xs transition"
+                  title="Edit transaction"
+                  data-testid={`edit-transaction-${t.id}`}
+                >
+                  ✏️
+                </button>
+                <button
                   onClick={() => handleDelete(t.id)}
                   className="text-red-500 hover:text-red-700 text-xs"
                   data-testid={`delete-transaction-${t.id}`}
@@ -484,6 +536,69 @@ export default function Transactions() {
           )}
         </div>
       </div>
+      {/* ── Edit Transaction Modal ─────────────────────────────────────── */}
+      {editingTxn && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-lg font-black text-black">Edit Transaction</h2>
+                <p className="text-xs text-slate-500">{editingTxn.voucher_no} · {editingTxn.client_name || editingTxn.party_name}</p>
+              </div>
+              <button onClick={() => setEditingTxn(null)} className="text-slate-400 hover:text-black text-xl font-bold">✕</button>
+            </div>
+
+            {/* Type selector */}
+            <div>
+              <label className="text-xs font-bold text-black block mb-2">Transaction Type</label>
+              <div className="grid grid-cols-4 gap-2">
+                {(["CR","CP","BR","BP"] as const).map((t) => (
+                  <button key={t} onClick={() => setEditType(t)}
+                    className={`py-2 text-xs font-bold rounded-lg border transition ${
+                      editType === t ? "bg-black text-white border-black" : "bg-slate-50 text-black border-slate-200 hover:bg-slate-100"
+                    }`}>
+                    {t === "CR" ? "Cash Recv" : t === "CP" ? "Cash Pay" : t === "BR" ? "Bank Recv" : "Bank Pay"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Amount + Date */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-bold text-black block mb-1">Amount (OMR)</label>
+                <input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)}
+                  className="w-full p-3 border rounded-lg font-bold text-black focus:outline-none focus:ring-2 focus:ring-slate-300" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-black block mb-1">Date</label>
+                <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)}
+                  className="w-full p-3 border rounded-lg font-bold text-black focus:outline-none focus:ring-2 focus:ring-slate-300" />
+              </div>
+            </div>
+
+            {/* Description */}
+            <div>
+              <label className="text-xs font-bold text-black block mb-1">Description</label>
+              <input type="text" value={editDescription} onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Optional notes..."
+                className="w-full p-3 border rounded-lg font-bold text-black focus:outline-none focus:ring-2 focus:ring-slate-300" />
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setEditingTxn(null)}
+                className="flex-1 py-3 border rounded-xl text-sm font-bold text-black hover:bg-slate-50 transition">
+                Cancel
+              </button>
+              <button onClick={handleEditSave} disabled={editLoading}
+                className="flex-1 py-3 bg-black text-white rounded-xl text-sm font-bold hover:opacity-90 transition disabled:opacity-50">
+                {editLoading ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
