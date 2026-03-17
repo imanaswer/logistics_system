@@ -41,8 +41,14 @@ export default function Transactions() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // ── Recent transactions filter ────────────────────────────────────────────
   const [historyFilter, setHistoryFilter] = useState<"ALL"|"CR"|"CP"|"BR"|"BP">("ALL");
+
+  const [editingTxn, setEditingTxn] = useState<any | null>(null);
+  const [editAmount, setEditAmount] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editType, setEditType] = useState<"CR"|"CP"|"BR"|"BP">("CR");
+  const [editLoading, setEditLoading] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -193,6 +199,33 @@ export default function Transactions() {
       alert("✅ Transaction deleted");
     } catch {
       alert("Delete failed");
+    }
+  };
+
+  const openEdit = (txn: any) => {
+    setEditingTxn(txn);
+    setEditAmount(String(txn.amount));
+    setEditDate(txn.date);
+    setEditDescription(txn.description || "");
+    setEditType(txn.trans_type);
+  };
+
+  const handleEditSave = async () => {
+    if (!editAmount || !editDate) { alert("Amount and date are required"); return; }
+    setEditLoading(true);
+    const token = localStorage.getItem("token");
+    try {
+      const res = await axios.patch(
+        `${API_URL}/api/transactions/${editingTxn.id}/`,
+        { amount: Number(editAmount), date: editDate, description: editDescription, trans_type: editType },
+        { headers: { Authorization: `Token ${token}` } }
+      );
+      setHistory((h) => h.map((t) => (t.id === editingTxn.id ? res.data : t)));
+      setEditingTxn(null);
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Failed to update transaction");
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -397,87 +430,56 @@ export default function Transactions() {
 
   {/* RIGHT */}
         <div className="w-full max-w-md space-y-4">
-          <h3 className="font-bold text-black text-sm">
-            Recent Transactions
-          </h3>
+          <h3 className="font-bold text-black text-sm">Recent Transactions</h3>
 
-          {/* ── Filter tabs ── */}
+          {/* Filter tabs */}
           <div className="bg-white rounded-xl border p-1.5 flex gap-1">
-            {([
-              { key: "ALL", label: "All" },
-              { key: "CR",  label: "Cash Recv" },
-              { key: "CP",  label: "Cash Pay"  },
-              { key: "BR",  label: "Bank Recv" },
-              { key: "BP",  label: "Bank Pay"  },
-            ] as const).map(({ key, label }) => {
-              const count = key === "ALL" ? history.length : history.filter(t => t.trans_type === key).length;
+            {(["ALL","CR","CP","BR","BP"] as const).map((key) => {
+              const labels: Record<string,string> = { ALL:"All", CR:"Cash Recv", CP:"Cash Pay", BR:"Bank Recv", BP:"Bank Pay" };
+              const cnt = key === "ALL" ? history.length : history.filter(t => t.trans_type === key).length;
               return (
-                <button
-                  key={key}
+                <button key={key}
                   onClick={() => { setHistoryFilter(key); setCurrentPage(1); }}
                   className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition flex flex-col items-center gap-0.5 ${
-                    historyFilter === key
-                      ? "bg-black text-white shadow"
-                      : "text-slate-500 hover:bg-slate-100"
-                  }`}
-                >
-                  <span>{label}</span>
-                  <span className={`text-xs font-black ${historyFilter === key ? "text-white/70" : "text-slate-400"}`}>
-                    {count}
-                  </span>
+                    historyFilter === key ? "bg-black text-white shadow" : "text-slate-500 hover:bg-slate-100"
+                  }`}>
+                  <span>{labels[key]}</span>
+                  <span className={`text-xs ${historyFilter === key ? "text-white/60" : "text-slate-400"}`}>{cnt}</span>
                 </button>
               );
             })}
           </div>
 
-          {/* ── Filtered list ── */}
+          {/* Filtered + paginated list */}
           {(() => {
             const filtered = historyFilter === "ALL" ? history : history.filter(t => t.trans_type === historyFilter);
             const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
             return (
               <>
                 {filtered.length === 0 && (
-                  <div className="text-sm text-slate-500 italic p-4 bg-white rounded-xl border">
-                    No {historyFilter === "ALL" ? "" : historyFilter + " "}transactions yet
-                  </div>
+                  <div className="text-sm text-slate-500 italic p-4 bg-white rounded-xl border">No transactions yet</div>
                 )}
-
                 {paginated.map((t) => (
                   <div key={t.id}
                     className="bg-white p-4 rounded-xl border shadow-sm flex justify-between items-center"
-                    data-testid={`transaction-${t.id}`}
-                  >
+                    data-testid={`transaction-${t.id}`}>
                     <div>
                       <p className="font-bold text-black text-sm">
-                        {t.voucher_no && (
-                          <span className="text-xs bg-slate-100 px-2 py-1 rounded mr-2">
-                            {t.voucher_no}
-                          </span>
-                        )}
+                        {t.voucher_no && <span className="text-xs bg-slate-100 px-2 py-1 rounded mr-2">{t.voucher_no}</span>}
                         {t.client_name || t.party_name || "No Client"}
                       </p>
-                      <p className="text-xs text-slate-600">
-                        {t.date} • {t.job ? `Job #${t.job}` : "General"}
-                      </p>
-                      {t.description && (
-                        <p className="text-xs text-slate-500 mt-1">{t.description}</p>
-                      )}
+                      <p className="text-xs text-slate-600">{t.date} • {t.job ? `Job #${t.job}` : "General"}</p>
+                      {t.description && <p className="text-xs text-slate-500 mt-1">{t.description}</p>}
                     </div>
-
                     <div className="flex items-center gap-3">
                       {t.client && (
-                        <button
-                          onClick={() => router.push(`/reports/ledger?clientId=${t.client}`)}
+                        <button onClick={() => router.push(`/reports/ledger?clientId=${t.client}`)}
                           className="text-blue-500 hover:text-blue-700 text-xs font-bold bg-blue-50 px-2 py-1 rounded hover:bg-blue-100 transition"
-                          data-testid={`view-ledger-${t.id}`}
-                          title="View Ledger"
-                        >
+                          data-testid={`view-ledger-${t.id}`} title="View Ledger">
                           <svg className="w-3.5 h-3.5 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                         </button>
                       )}
-                      <span className={`font-bold text-sm ${
-                        ["CR","BR"].includes(t.trans_type) ? "text-green-600" : "text-red-600"
-                      }`}>
+                      <span className={`font-bold text-sm ${["CR","BR"].includes(t.trans_type) ? "text-green-600" : "text-red-600"}`}>
                         {["CR","BR"].includes(t.trans_type) ? "+" : "-"}{Number(t.amount).toFixed(3)}
                       </span>
                       <button onClick={() => openEdit(t)}
@@ -489,7 +491,6 @@ export default function Transactions() {
                     </div>
                   </div>
                 ))}
-
                 {filtered.length > itemsPerPage && (
                   <div className="flex items-center justify-between bg-white p-3 rounded-xl border">
                     <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
@@ -511,6 +512,62 @@ export default function Transactions() {
           })()}
         </div>
       </div>
+
+      {/* Edit Transaction Modal */}
+      {editingTxn && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-lg font-black text-black">Edit Transaction</h2>
+                <p className="text-xs text-slate-500">{editingTxn.voucher_no} · {editingTxn.client_name || editingTxn.party_name}</p>
+              </div>
+              <button onClick={() => setEditingTxn(null)} className="text-slate-400 hover:text-black text-xl font-bold">✕</button>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-black block mb-2">Transaction Type</label>
+              <div className="grid grid-cols-4 gap-2">
+                {(["CR","CP","BR","BP"] as const).map((t) => (
+                  <button key={t} onClick={() => setEditType(t)}
+                    className={`py-2 text-xs font-bold rounded-lg border transition ${
+                      editType === t ? "bg-black text-white border-black" : "bg-slate-50 text-black border-slate-200 hover:bg-slate-100"
+                    }`}>
+                    {t === "CR" ? "Cash Recv" : t === "CP" ? "Cash Pay" : t === "BR" ? "Bank Recv" : "Bank Pay"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-bold text-black block mb-1">Amount (OMR)</label>
+                <input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)}
+                  className="w-full p-3 border rounded-lg font-bold text-black focus:outline-none focus:ring-2 focus:ring-slate-300" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-black block mb-1">Date</label>
+                <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)}
+                  className="w-full p-3 border rounded-lg font-bold text-black focus:outline-none focus:ring-2 focus:ring-slate-300" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-black block mb-1">Description</label>
+              <input type="text" value={editDescription} onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Optional notes..."
+                className="w-full p-3 border rounded-lg font-bold text-black focus:outline-none focus:ring-2 focus:ring-slate-300" />
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setEditingTxn(null)}
+                className="flex-1 py-3 border rounded-xl text-sm font-bold text-black hover:bg-slate-50 transition">
+                Cancel
+              </button>
+              <button onClick={handleEditSave} disabled={editLoading}
+                className="flex-1 py-3 bg-black text-white rounded-xl text-sm font-bold hover:opacity-90 transition disabled:opacity-50">
+                {editLoading ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
