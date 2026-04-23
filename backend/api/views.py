@@ -302,24 +302,8 @@ def ledger_statement(request):
             "balance_type": "Dr" if running_balance >= 0 else "Cr",
         })
 
-    total_debit = sum(Decimal(e["debit"]) for e in ledger_entries)
-    total_credit = sum(Decimal(e["credit"]) for e in ledger_entries)
+    ledger_entries.sort(key=lambda x: x["date"] or "")
 
-    return Response({
-        "client": ClientSerializer(client).data,
-        "entries": ledger_entries,
-        "total_debit": str(total_debit),
-        "total_credit": str(total_credit),
-        "net_balance": str(total_debit - total_credit),
-        "final_balance": str(abs(running_balance)),
-        "final_balance_type": "Dr" if running_balance >= 0 else "Cr",
-    })
-
-
-    # Sort all entries by date
-    ledger_entries.sort(key=lambda x: x["date"])
-
-    # Recalculate running balance in proper order
     running_balance = Decimal("0.000")
     for entry in ledger_entries:
         debit = Decimal(entry["debit"])
@@ -328,7 +312,6 @@ def ledger_statement(request):
         entry["running_balance"] = str(abs(running_balance))
         entry["balance_type"] = "Dr" if running_balance >= 0 else "Cr"
 
-    # Calculate totals
     total_debit = sum(Decimal(e["debit"]) for e in ledger_entries)
     total_credit = sum(Decimal(e["credit"]) for e in ledger_entries)
 
@@ -338,11 +321,6 @@ def ledger_statement(request):
         "total_debit": str(total_debit),
         "total_credit": str(total_credit),
         "net_balance": str(total_debit - total_credit),
-        "invoice_totals": {
-            "total_amount": str(invoice_total_amount),
-            "total_vat": str(invoice_total_vat),
-            "total_invoice": str(invoice_total_invoice),
-        },
         "final_balance": str(abs(running_balance)),
         "final_balance_type": "Dr" if running_balance >= 0 else "Cr",
     })

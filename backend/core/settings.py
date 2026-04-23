@@ -1,10 +1,13 @@
 """
 Django settings for Logistics ERP System
-Optimized for Render + Vercel deployment
+Optimized for Supabase + Vercel deployment
 """
 from pathlib import Path
 import os
 import dj_database_url
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(Path(__file__).resolve().parent.parent, '.env'))
 
 # Build paths
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -123,7 +126,11 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # ==========================================
 #           CORS SETTINGS
