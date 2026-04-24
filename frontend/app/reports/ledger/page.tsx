@@ -159,19 +159,15 @@ function LedgerStatement() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 p-6">
+    <div className="space-y-6">
 
       {!showPrintView ? (
         // ── Filter form ────────────────────────────────────────────────────
-        <div className="max-w-4xl mx-auto">
-          <button onClick={() => router.push("/")}
-            className="mb-6 bg-white px-4 py-2 rounded-lg border shadow hover:bg-slate-50 text-sm font-semibold">
-            ← Back to Dashboard
-          </button>
-          <div className="bg-white p-8 rounded-2xl border shadow-sm space-y-6">
+        <div className="max-w-4xl">
+          <div className="bg-white p-8 rounded-xl border shadow-sm space-y-6">
             <div>
-              <h1 className="text-2xl font-black text-black">Client Ledger Statement</h1>
-              <p className="text-sm text-slate-500">Generate a professional Statement of Accounts</p>
+              <h1 className="text-2xl font-bold tracking-tight">Client Ledger Statement</h1>
+              <p className="text-sm text-muted-foreground mt-1">Generate a professional Statement of Accounts</p>
             </div>
             <div className="space-y-4">
               <div>
@@ -197,7 +193,7 @@ function LedgerStatement() {
               </div>
             </div>
             <button onClick={fetchLedger} disabled={loading || !selectedClientId}
-              className="w-full py-4 bg-black text-white font-bold rounded-xl hover:opacity-90 transition disabled:opacity-50"
+              className="w-full py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition disabled:opacity-50"
               data-testid="generate-ledger-button">
               {loading ? "Generating..." : "Generate Statement of Accounts"}
             </button>
@@ -211,11 +207,11 @@ function LedgerStatement() {
           {/* Screen-only buttons */}
           <div className="no-print mb-4 flex gap-3">
             <button onClick={() => setShowPrintView(false)}
-              className="bg-white px-4 py-2 rounded-lg border shadow hover:bg-slate-50 text-sm font-semibold">
-              ← Back to Filters
+              className="px-4 py-2 rounded-lg border shadow-sm hover:bg-slate-50 text-sm font-medium">
+              Back to Filters
             </button>
             <button onClick={() => window.print()}
-              className="bg-black text-white px-6 py-2 rounded-lg shadow hover:opacity-90 text-sm font-semibold"
+              className="bg-indigo-600 text-white px-6 py-2 rounded-lg shadow-sm hover:bg-indigo-700 text-sm font-semibold"
               data-testid="print-button">
               🖨️ Print / Save as PDF
             </button>

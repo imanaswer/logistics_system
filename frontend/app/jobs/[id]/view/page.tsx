@@ -94,9 +94,9 @@ export default function ViewJob() {
   const label = "text-[10px] text-slate-500 uppercase font-bold mb-0.5 tracking-wide"; 
 
   return (
-    <div className="min-h-screen bg-slate-100 p-4 md:p-8 flex justify-center font-sans">
-      
-      <div className="w-full max-w-6xl bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200">
+    <div className="max-w-6xl mx-auto">
+
+      <div className="w-full bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200">
         
         {/* HEADER */}
         <div className="bg-slate-900 p-8 text-white flex flex-col md:flex-row justify-between items-center gap-6">

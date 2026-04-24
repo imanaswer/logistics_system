@@ -1,134 +1,120 @@
 "use client";
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-// 1. Import the global config
-import { API_URL } from '../config'; 
+
+import { useState } from "react";
+import { User, Lock, Loader2 } from "lucide-react";
+import { API_URL } from "../config";
 
 export default function Login() {
-  const router = useRouter();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e: any) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
-      console.log("Attempting login to:", `${API_URL}/api/login/`); // Debugging log
-
-      // 2. Use API_URL here
       const res = await fetch(`${API_URL}/api/login/`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
       });
 
-      // 3. Check if the server said "No" (400/401 error)
-      if (!res.ok) {
-        throw new Error('Login failed');
-      }
-      
-      // 4. Save Credentials Securely
-      const data = await res.json();
-      
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('username', username);
-        
-        // 5. Hard Redirect to force the dashboard to load fresh
-        window.location.href = '/'; 
-      } else {
-        throw new Error('No token received');
-      }
+      if (!res.ok) throw new Error("Login failed");
 
-    } catch (err) {
-      console.error("Login Error:", err);
-      setError('Invalid Username or Password');
+      const data = await res.json();
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("username", username);
+        window.location.href = "/";
+      } else {
+        throw new Error("No token received");
+      }
+    } catch {
+      setError("Invalid username or password");
       setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen flex font-sans">
-      
-      {/* LEFT SIDE: Branding / Image */}
-      <div className="hidden lg:flex w-1/2 bg-slate-900 relative items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/40 to-slate-900/90 z-10"></div>
-        {/* Background Image */}
-        <div className="absolute inset-0 z-0 opacity-40" 
-             style={{
-                backgroundImage: "url('https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=2070&auto=format&fit=crop')",
-                backgroundSize: 'cover',
-                backgroundPosition: 'center'
-             }}>
+      <div className="hidden lg:flex w-3/5 relative items-center justify-center overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-indigo-800 to-slate-900" />
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 left-20 w-72 h-72 border border-white/20 rounded-full" />
+          <div className="absolute bottom-32 right-16 w-96 h-96 border border-white/10 rounded-full" />
+          <div className="absolute top-1/2 left-1/3 w-48 h-48 border border-white/15 rounded-full" />
         </div>
-        
-        <div className="relative z-20 text-center px-10">
-            <h1 className="text-5xl font-extrabold text-white tracking-tight mb-4">LogisticsERP</h1>
-            <p className="text-blue-200 text-lg max-w-md mx-auto leading-relaxed">
-                Manage shipments, track finances, and generate invoices with enterprise-grade precision.
-            </p>
+        <div className="relative z-10 text-center px-10 max-w-lg">
+          <div className="inline-flex items-center gap-3 mb-6">
+            <div className="bg-white/10 backdrop-blur p-3 rounded-xl">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+            </div>
+          </div>
+          <h1 className="text-4xl font-bold text-white tracking-tight mb-3">SPEED INTERNATIONAL</h1>
+          <p className="text-lg text-indigo-200 font-medium mb-2">Business LLC</p>
+          <p className="text-indigo-300/80 text-sm leading-relaxed">
+            Enterprise logistics management — shipments, invoicing, and financial reporting in one place.
+          </p>
         </div>
       </div>
 
-      {/* RIGHT SIDE: Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center bg-white p-8">
-        <div className="w-full max-w-md space-y-8">
-            <div className="lg:hidden text-center mb-8">
-                <h1 className="text-3xl font-bold text-slate-900">LogisticsERP</h1>
+      <div className="w-full lg:w-2/5 flex items-center justify-center bg-white p-8">
+        <div className="w-full max-w-sm space-y-8">
+          <div className="lg:hidden text-center mb-6">
+            <h1 className="text-2xl font-bold text-slate-900">Logistics<span className="text-indigo-600">ERP</span></h1>
+          </div>
+
+          <div>
+            <h2 className="text-2xl font-bold text-slate-900">Welcome back</h2>
+            <p className="mt-1 text-sm text-slate-500">Sign in to your account to continue.</p>
+          </div>
+
+          {error && (
+            <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-lg text-sm font-medium flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-rose-500 rounded-full shrink-0" />
+              {error}
+            </div>
+          )}
+
+          <form className="space-y-5" onSubmit={handleLogin}>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Username</label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text" required value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:bg-white transition"
+                  placeholder="Enter your username"
+                />
+              </div>
             </div>
 
             <div>
-                <h2 className="text-3xl font-bold text-slate-900">Welcome back</h2>
-                <p className="mt-2 text-sm text-slate-500">Please sign in to your account.</p>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="password" required value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent focus:bg-white transition"
+                  placeholder="Enter your password"
+                />
+              </div>
             </div>
 
-            {error && (
-                <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-md text-sm font-medium animate-pulse">
-                    {error}
-                </div>
-            )}
+            <button type="submit" disabled={loading}
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/25">
+              {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Signing in...</> : "Sign In"}
+            </button>
+          </form>
 
-            <form className="space-y-6" onSubmit={handleLogin}>
-                <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Username</label>
-                    <input 
-                        type="text" 
-                        required 
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition"
-                        placeholder="Enter your username"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-bold text-slate-700 mb-2">Password</label>
-                    <input 
-                        type="password" 
-                        required 
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition"
-                        placeholder="••••••••"
-                    />
-                </div>
-
-                <button 
-                    type="submit" 
-                    disabled={loading}
-                    className="w-full flex justify-center py-4 px-4 border border-transparent rounded-xl shadow-lg text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition transform active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                    {loading ? 'Signing In...' : 'Sign In'}
-                </button>
-            </form>
-
-            <div className="text-center mt-6">
-                <p className="text-xs text-slate-400">Protected by secure enterprise authentication.</p>
-            </div>
+          <p className="text-center text-xs text-slate-400">Secured with enterprise authentication</p>
         </div>
       </div>
     </div>

@@ -144,16 +144,13 @@ export default function NewJob() {
   const inputClass = "w-full p-3 rounded-lg border border-slate-200 font-bold text-slate-900 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition";
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 flex justify-center font-sans">
-      <div className="w-full max-w-4xl space-y-6">
-        
-        {/* Header */}
-        <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+    <div className="max-w-4xl space-y-6">
+        <div className="flex justify-between items-center">
             <div>
-                <h1 className="text-2xl font-black text-slate-900 tracking-tight">Create New Job Card</h1>
-                <p className="text-sm text-slate-500 font-medium mt-1">Enter shipment details to generate a job card.</p>
+                <h1 className="text-2xl font-bold tracking-tight">Create New Job Card</h1>
+                <p className="text-sm text-muted-foreground mt-1">Enter shipment details to generate a job card.</p>
             </div>
-            <button onClick={() => router.push('/')} className="text-slate-500 hover:text-red-600 font-bold text-sm bg-slate-100 px-4 py-2 rounded-lg transition">Cancel</button>
+            <button onClick={() => router.push('/')} className="px-4 py-2 text-sm font-medium border rounded-lg hover:bg-slate-50 transition">Cancel</button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -306,12 +303,11 @@ export default function NewJob() {
             </div>
 
             <div className="flex justify-end pt-2">
-                <button type="submit" disabled={loading} className="bg-slate-900 hover:bg-black text-white text-base font-bold py-4 px-12 rounded-xl shadow-lg transition transform active:scale-[0.98] w-full md:w-auto">
+                <button type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700 text-white text-base font-semibold py-3 px-10 rounded-lg shadow-sm transition w-full md:w-auto">
                     {loading ? 'Processing...' : 'Create Job Card'}
                 </button>
             </div>
         </form>
-      </div>
     </div>
   );
 }

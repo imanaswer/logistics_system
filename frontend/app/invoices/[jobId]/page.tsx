@@ -226,8 +226,8 @@ export default function InvoiceEditor() {
   if (loading) return <div className="h-screen flex items-center justify-center font-bold text-slate-400">LOADING...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-100 p-4 md:p-8 flex justify-center items-center font-sans text-slate-900">
-      <div className="w-full max-w-6xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px]">
+    <div className="max-w-6xl mx-auto">
+      <div className="w-full bg-white rounded-xl border shadow-sm overflow-hidden flex flex-col md:flex-row min-h-[600px]">
         
         {/* LEFT: MAIN FORM */}
         <div className="flex-grow p-8 md:p-10 flex flex-col relative">
@@ -323,7 +323,7 @@ export default function InvoiceEditor() {
                 <span className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Net Balance Due (OMR)</span>
                 <span className="block text-4xl font-black tracking-tight">{balanceDue > 0 ? balanceDue.toFixed(3) : "0.000"}</span>
             </div>
-            <button onClick={handleSave} disabled={saving} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg transition text-xs uppercase tracking-widest disabled:opacity-50">
+            <button onClick={handleSave} disabled={saving} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg shadow-sm transition text-sm disabled:opacity-50">
                 {saving ? "Processing..." : "Finalize & Record"}
             </button>
         </div>
