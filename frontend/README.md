@@ -1,70 +1,48 @@
-# Getting Started with Create React App
+# LogisticsERP Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Next.js 16 frontend with shadcn/ui components, Recharts data visualization, and Tailwind CSS.
 
-## Available Scripts
+## Quick Start
 
-In the project directory, you can run:
+```bash
+npm install
+npm run dev       # Development server at http://localhost:3000
+npm run build     # Production build
+npm start         # Start production server
+```
 
-### `npm start`
+## Pages
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+| Route | Description |
+|-------|-------------|
+| `/` | Dashboard with charts and KPI cards |
+| `/login` | Authentication page |
+| `/jobs` | Jobs list with search and sorting |
+| `/jobs/new` | Create new job |
+| `/jobs/[id]/view` | Job detail view |
+| `/jobs/[id]/edit` | Edit job |
+| `/invoices/[jobId]` | Invoice editor |
+| `/invoices/[jobId]/view` | Print-ready invoice view |
+| `/transactions` | Transaction management |
+| `/reports` | Account statement with running balance |
+| `/reports/ledger` | Professional ledger statement (print-optimized) |
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Shared Components
 
-### `npm test`
+Located in `components/ui/`:
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- **StatCard** — KPI card with icon, value, trend, and color variants
+- **StatusBadge** — Color-coded pill badges (13 variants)
+- **DataTable** — Generic sortable, searchable, paginated table
+- **PageHeader** — Title + description + action slot
+- **LoadingSkeleton** — Skeleton loaders for pages and tables
+- **EmptyState** — Configurable empty state with icon and action
+- **Sidebar** — Collapsible desktop sidebar + mobile drawer
 
-### `npm run build`
+## Design System
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- **Primary**: Indigo-600
+- **Success**: Emerald-500
+- **Danger**: Rose-500
+- **CSS Variables**: HSL format via shadcn/ui in `globals.css`
+- **Utility**: `cn()` from `lib/utils.ts` (clsx + tailwind-merge)
